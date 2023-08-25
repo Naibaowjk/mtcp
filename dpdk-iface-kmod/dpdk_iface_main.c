@@ -10,6 +10,7 @@
 #include <dirent.h>
 #include <rte_version.h>
 #include <rte_ethdev.h>
+#include <net/ethernet.h>
 #include "dpdk_iface_common.h"
 /*--------------------------------------------------------------------------*/
 //#define DEBUG				1
@@ -22,7 +23,7 @@
 typedef struct {
 	PciDevice pd;
 	struct rte_eth_dev_info dev_details;
-	struct ether_addr ports_eth_addr;
+	struct rte_ether_addr ports_eth_addr;
 } DevInfo;
 
 static DevInfo di[RTE_MAX_ETHPORTS];	
@@ -110,10 +111,11 @@ probe_all_rte_devices(char **argv, int *argc)
 		}
 
 		for (i = 0; i < total_files; i++, pci_index++) {
-			argv[*argc] = strdup("-w");
+			fprintf(stdout, "probe PCI device %s\n", dirlist[i]->d_name);
+			argv[*argc] = strdup("-a");
 			argv[*argc + 1] = strdup(dirlist[i]->d_name);
 			if (argv[*argc] == NULL ||
-			    argv[*argc + 1] == NULL)
+				argv[*argc + 1] == NULL)
 				goto alloc_err;
 			*argc += 2;
 			if (sscanf(dirlist[i]->d_name, PCI_DOM":"PCI_BUS":"
@@ -260,7 +262,7 @@ main(int argc, char **argv)
 	ret = rte_eal_init(rte_argc, rte_argv);
 
 	/* get total count of detected ethernet ports */
-	num_devices = rte_eth_dev_count();
+	num_devices = rte_eth_dev_count_avail();
 	if (num_devices == 0) {
 		fprintf(stderr, "No Ethernet port detected!\n");
 		exit(EXIT_FAILURE);

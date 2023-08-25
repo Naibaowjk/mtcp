@@ -124,7 +124,7 @@ int
 mtcp_getpeername(mctx_t mctx, int sockid, struct sockaddr *addr,
 		 socklen_t *addrlen);
 
-inline ssize_t
+ssize_t
 mtcp_read(mctx_t mctx, int sockid, char *buf, size_t len);
 
 ssize_t

@@ -466,6 +466,8 @@ mtcp_bind(mctx_t mctx, int sockid,
 	mtcp->smap[sockid].saddr = *addr_in;
 	mtcp->smap[sockid].opts |= MTCP_ADDR_BIND;
 
+	TRACE_CONFIG("Record bind port as %u\n", mtcp->smap[sockid].saddr.sin_port);
+
 	return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -558,11 +560,13 @@ mtcp_accept(mctx_t mctx, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 	socket_map_t socket;
 	tcp_stream *accepted = NULL;
 
+	fprintf(stdout, "get mtcp manager\n");
 	mtcp = GetMTCPManager(mctx);
 	if (!mtcp) {
 		return -1;
 	}
 
+	fprintf(stdout, "validate socket\n");
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
 		TRACE_API("Socket id %d out of range.\n", sockid);
 		errno = EBADF;
@@ -570,15 +574,18 @@ mtcp_accept(mctx_t mctx, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 	}
 
 	/* requires listening socket */
+	fprintf(stdout, "check socket type\n");
 	if (mtcp->smap[sockid].socktype != MTCP_SOCK_LISTENER) {
 		errno = EINVAL;
 		return -1;
 	}
 
 	listener = mtcp->smap[sockid].listener;
+	fprintf(stdout, "listener address: %p\n", (void*)listener);
 
 	/* dequeue from the acceptq without lock first */
 	/* if nothing there, acquire lock and cond_wait */
+	fprintf(stdout, "dequeue from accept queue\n");
 	accepted = StreamDequeue(listener->acceptq);
 	if (!accepted) {
 		if (listener->socket->opts & MTCP_NONBLOCK) {
@@ -600,11 +607,15 @@ mtcp_accept(mctx_t mctx, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 		}
 	}
 
+	fprintf(stdout, "check whether there is nothing\n");
 	if (!accepted) {
+		fprintf(stdout, "[NEVER HAPPEN] Empty accept queue!\n");
 		TRACE_ERROR("[NEVER HAPPEN] Empty accept queue!\n");
 	}
 
+	fprintf(stdout, "check whether need to allocate new socket\n");
 	if (!accepted->socket) {
+		fprintf(stdout, "try allocate new socket\n");
 		socket = AllocateSocket(mctx, MTCP_SOCK_STREAM, FALSE);
 		if (!socket) {
 			TRACE_ERROR("Failed to create new socket!\n");
@@ -1284,7 +1295,7 @@ mtcp_recv(mctx_t mctx, int sockid, char *buf, size_t len, int flags)
         return ret;
 }
 /*----------------------------------------------------------------------------*/
-inline ssize_t
+ssize_t
 mtcp_read(mctx_t mctx, int sockid, char *buf, size_t len)
 {
 	return mtcp_recv(mctx, sockid, buf, len, 0);

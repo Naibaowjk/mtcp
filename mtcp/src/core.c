@@ -774,7 +774,6 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 
 	ts = ts_prev = 0;
 	while ((!ctx->done || mtcp->flow_cnt) && !ctx->exit) {
-		
 		STAT_COUNT(mtcp->runstat.rounds);
 		recv_cnt = 0;
 			
@@ -791,8 +790,11 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 
 			for (i = 0; i < recv_cnt; i++) {
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
-				if (pktbuf != NULL)
+				if (pktbuf != NULL){
+					TRACE_CONFIG("MTCP Recv Packet with length %u, process on core %d\n", len, ctx->cpu);
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
+				}
+					
 #ifdef NETSTAT
 				else
 					mtcp->nstat.rx_errors[rx_inf]++;
@@ -868,6 +870,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	DestroyRemainingFlows(mtcp);
 #endif
 
+	TRACE_CONFIG("MTCP thread %d out of main loop.\n", ctx->cpu);
 	TRACE_DBG("MTCP thread %d out of main loop.\n", ctx->cpu);
 	/* flush logs */
 	flush_log_data(mtcp);
@@ -1326,12 +1329,12 @@ mtcp_create_context(int cpu)
 	/* Wake up mTCP threads (wake up I/O threads) */
 	if (current_iomodule_func == &dpdk_module_func) {
 		int master;
-		master = rte_get_master_lcore();
+		master = rte_get_main_lcore();
 		
 		if (master == whichCoreID(cpu)) {
-			lcore_config[master].ret = 0;
-			lcore_config[master].state = FINISHED;
-			
+			// lcore_config[master].ret = 0;
+			// lcore_config[master].state = FINISHED;
+
 			if (pthread_create(&g_thread[cpu], 
 					   NULL, MTCPRunThread, (void *)mctx) != 0) {
 				TRACE_ERROR("pthread_create of mtcp thread failed!\n");
@@ -1358,6 +1361,8 @@ mtcp_create_context(int cpu)
 		mtcp_master = cpu;
 		TRACE_INFO("CPU %d is now the master thread.\n", mtcp_master);
 	}
+
+	TRACE_INFO("Create mtcp context on CPU %d.\n", cpu);
 
 	return mctx;
 }
@@ -1646,7 +1651,7 @@ mtcp_destroy()
 {
 	int i;
 #ifndef DISABLE_DPDK
-	int master = rte_get_master_lcore();
+	int master = rte_get_main_lcore();
 #endif
 	/* wait until all threads are closed */
 	for (i = 0; i < num_cpus; i++) {

@@ -78,8 +78,8 @@
 /*
  * Configurable number of RX/TX ring descriptors
  */
-#define RTE_TEST_RX_DESC_DEFAULT	128
-#define RTE_TEST_TX_DESC_DEFAULT	128
+#define RTE_TEST_RX_DESC_DEFAULT	512
+#define RTE_TEST_TX_DESC_DEFAULT	512
 
 /*
  * Ethernet frame overhead
@@ -110,22 +110,22 @@ static struct rte_eth_dev_info dev_info[RTE_MAX_ETHPORTS];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= 	ETH_MQ_RX_RSS,
-#if RTE_VERSION < RTE_VERSION_NUM(19, 8, 0, 0)
-		.max_rx_pkt_len = 	ETHER_MAX_LEN,
-#else
-		.max_rx_pkt_len = 	RTE_ETHER_MAX_LEN,
-#endif
-#if RTE_VERSION > RTE_VERSION_NUM(17, 8, 0, 0)
-		.offloads	=	(
-#if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
-					 DEV_RX_OFFLOAD_CRC_STRIP |
-#endif /* !18.05 */
-					 DEV_RX_OFFLOAD_CHECKSUM
-#ifdef ENABLELRO
-					 | DEV_RX_OFFLOAD_TCP_LRO
-#endif
-					 ),
-#endif /* !17.08 */
+// #if RTE_VERSION < RTE_VERSION_NUM(19, 8, 0, 0)
+// 		.max_rx_pkt_len = 	ETHER_MAX_LEN,
+// #else
+// 		.max_rx_pkt_len = 	RTE_ETHER_MAX_LEN,
+// #endif
+// #if RTE_VERSION > RTE_VERSION_NUM(17, 8, 0, 0)
+// 		.offloads	=	(
+// #if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
+// 					 DEV_RX_OFFLOAD_CRC_STRIP |
+// #endif /* !18.05 */
+// 					 DEV_RX_OFFLOAD_CHECKSUM
+// #ifdef ENABLELRO
+// 					 | DEV_RX_OFFLOAD_TCP_LRO
+// #endif
+// 					 ),
+// #endif /* !17.08 */
 		.split_hdr_size = 	0,
 #if RTE_VERSION < RTE_VERSION_NUM(18, 5, 0, 0)
 		.header_split   = 	0, /**< Header Split disabled */
@@ -147,11 +147,11 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = 		ETH_MQ_TX_NONE,
-#if RTE_VERSION >= RTE_VERSION_NUM(18, 5, 0, 0)
-		.offloads	=	(DEV_TX_OFFLOAD_IPV4_CKSUM |
-					 DEV_TX_OFFLOAD_UDP_CKSUM |
-					 DEV_TX_OFFLOAD_TCP_CKSUM)
-#endif
+// #if RTE_VERSION >= RTE_VERSION_NUM(18, 5, 0, 0)
+// 		.offloads	=	(DEV_TX_OFFLOAD_IPV4_CKSUM |
+// 					 DEV_TX_OFFLOAD_UDP_CKSUM |
+// 					 DEV_TX_OFFLOAD_TCP_CKSUM)
+// #endif
 	},
 };
 
@@ -534,7 +534,7 @@ dpdk_get_rptr(struct mtcp_thread_context *ctxt, int ifidx, int index, uint16_t *
 	dpc->rmbufs[ifidx].m_table[index] = m;
 
 	/* verify checksum values from ol_flags */
-	if ((m->ol_flags & (PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD)) != 0) {
+	if ((m->ol_flags & (RTE_MBUF_F_RX_L4_CKSUM_BAD | RTE_MBUF_F_RX_IP_CKSUM_BAD)) != 0) {
 		TRACE_ERROR("%s(%p, %d, %d): mbuf with invalid checksum: "
 			    "%p(%lu);\n",
 			    __func__, ctxt, ifidx, index, m, m->ol_flags);
@@ -697,6 +697,7 @@ dpdk_load_module(void)
 
 		/* Initialise each port */
 		int i;
+		printf("num_devices_attached: %d\n", num_devices_attached);
 		for (i = 0; i < num_devices_attached; ++i) {
 		        /* get portid form the index of attached devices */
 		        portid = devices_attached[i];
@@ -709,10 +710,15 @@ dpdk_load_module(void)
 #endif
 			/* init port */
 			printf("Initializing port %u... ", (unsigned) portid);
+			printf("Device name: %s", dev_info[portid].device->name);
 			fflush(stdout);
-			if (!strncmp(dev_info[portid].driver_name, "net_mlx", 7))
+
+			printf("try check driver type %s\n", dev_info[portid].driver_name);fflush(stdout);
+			if (!strncmp(dev_info[portid].driver_name, "mlx5_pci", 8)){
 				port_conf.rx_adv_conf.rss_conf.rss_key_len = 40;
-			
+			}
+				
+			printf("try rte_eth_dev_configure\n");fflush(stdout);
 			ret = rte_eth_dev_configure(portid, CONFIG.num_cores, CONFIG.num_cores, &port_conf);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u, cores: %d\n",
@@ -724,6 +730,7 @@ dpdk_load_module(void)
 			rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
 #endif
 
+			printf("try rte_eth_rx_queue_setup\n");fflush(stdout);
 			for (rxlcore_id = 0; rxlcore_id < CONFIG.num_cores; rxlcore_id++) {
 				ret = rte_eth_rx_queue_setup(portid, rxlcore_id, nb_rxd,
 							     rte_eth_dev_socket_id(portid), &rx_conf,
@@ -736,6 +743,7 @@ dpdk_load_module(void)
 
 			/* init one TX queue on each port per CPU (this is redundant for this app) */
 			fflush(stdout);
+			printf("try rte_eth_tx_queue_setup\n");fflush(stdout);
 			for (rxlcore_id = 0; rxlcore_id < CONFIG.num_cores; rxlcore_id++) {
 				ret = rte_eth_tx_queue_setup(portid, rxlcore_id, nb_txd,
 							     rte_eth_dev_socket_id(portid), &tx_conf);
@@ -746,6 +754,7 @@ dpdk_load_module(void)
 			}
 
 			/* Start device */
+			printf("try rte_eth_dev_start\n");fflush(stdout);
 			ret = rte_eth_dev_start(portid);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n",
@@ -832,7 +841,7 @@ dpdk_dev_ioctl(struct mtcp_thread_context *ctx, int nif, int cmd, void *argp)
 		if ((dev_info[nif].tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0)
 			goto dev_ioctl_err;
 		m = dpc->wmbufs[eidx].m_table[len_of_mbuf - 1];
-		m->ol_flags = PKT_TX_IP_CKSUM | PKT_TX_IPV4;
+		m->ol_flags = RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4;
 #if RTE_VERSION < RTE_VERSION_NUM(19, 8, 0, 0)
 		m->l2_len = sizeof(struct ether_hdr);
 #else
@@ -845,7 +854,7 @@ dpdk_dev_ioctl(struct mtcp_thread_context *ctx, int nif, int cmd, void *argp)
 			goto dev_ioctl_err;
 		m = dpc->wmbufs[eidx].m_table[len_of_mbuf - 1];
 		tcph = (struct tcphdr *)((unsigned char *)iph + (iph->ihl<<2));
-		m->ol_flags |= PKT_TX_TCP_CKSUM;
+		m->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
 #if RTE_VERSION < RTE_VERSION_NUM(19, 8, 0, 0)
 		tcph->check = rte_ipv4_phdr_cksum((struct ipv4_hdr *)iph, m->ol_flags);
 #else
@@ -898,7 +907,7 @@ dpdk_dev_ioctl(struct mtcp_thread_context *ctx, int nif, int cmd, void *argp)
 #endif
 		m->l3_len = (iph->ihl<<2);
 		m->l4_len = (tcph->doff<<2);
-		m->ol_flags = PKT_TX_TCP_CKSUM | PKT_TX_IP_CKSUM | PKT_TX_IPV4;
+		m->ol_flags = RTE_MBUF_F_TX_TCP_CKSUM | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4;
 #if RTE_VERSION < RTE_VERSION_NUM(19, 8, 0, 0)
 		tcph->check = rte_ipv4_phdr_cksum((struct ipv4_hdr *)iph, m->ol_flags);
 #else

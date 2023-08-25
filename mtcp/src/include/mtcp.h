@@ -73,7 +73,7 @@
 #define BLOCKING_SUPPORT                FALSE
 
 #ifndef MAX_CPUS
-#define MAX_CPUS                        16
+#define MAX_CPUS                        24
 #endif
 /*----------------------------------------------------------------------------*/
 /* Statistics */
@@ -154,6 +154,11 @@ struct mtcp_config
 	struct eth_table *eths;
 	int *nif_to_eidx; // mapping physic port indexes to that of the configured port-list
 	int eths_num;
+
+	/* mininet-support config */
+	bool use_mininet;
+	char mn_prefix[128];
+	char mn_interfaces[128];
 
 	/* route config */
 	struct route_table *rtable;		// routing table

@@ -48,7 +48,7 @@
 /*----------------------------------------------------------------------------*/
 io_module_func *current_iomodule_func = &dpdk_module_func;
 #ifndef DISABLE_DPDK
-enum rte_proc_type_t eal_proc_type_detect(void);
+// enum rte_proc_type_t eal_proc_type_detect(void);
 /**
  * DPDK's RTE consumes some huge pages for internal bookkeeping.
  * Therefore, it is not always safe to reserve the exact amount
@@ -102,60 +102,60 @@ GetNumQueues()
 /**
  * returns max numa ID while probing for rte devices
  */
-static int
-probe_all_rte_devices(char **argv, int *argc, char *dev_name_list)
-{
-	PciDevice pd;
-	int fd, numa_id = -1;
-	static char end[] = "";
-	static const char delim[] = " \t";
-	static char *dev_tokenizer;
-	char *dev_token, *saveptr;
+// static int
+// probe_all_rte_devices(char **argv, int *argc, char *dev_name_list)
+// {
+// 	PciDevice pd;
+// 	int fd, numa_id = -1;
+// 	static char end[] = "";
+// 	static const char delim[] = " \t";
+// 	static char *dev_tokenizer;
+// 	char *dev_token, *saveptr;
 
-	dev_tokenizer = strdup(dev_name_list);
-	if (dev_tokenizer == NULL) {
-		TRACE_ERROR("Can't allocate memory for dev_tokenizer!\n");
-		exit(EXIT_FAILURE);
-	}
-	fd = open(DEV_PATH, O_RDONLY);
-	if (fd != -1) {
-		dev_token = strtok_r(dev_tokenizer, delim, &saveptr);
-		while (dev_token != NULL) {
-			strcpy(pd.ifname, dev_token);
-			if (ioctl(fd, FETCH_PCI_ADDRESS, &pd) == -1) {
-				TRACE_DBG("Could not find pci info on dpdk "
-					  "device: %s. Is it a dpdk-attached "
-					  "interface?\n", dev_token);
-				goto loop_over;
-			}
-			argv[*argc] = strdup("-w");
-			argv[*argc + 1] = calloc(PCI_LENGTH, 1);
-			if (argv[*argc] == NULL ||
-			    argv[*argc + 1] == NULL) {
-				TRACE_ERROR("Memory allocation error!\n");
-				exit(EXIT_FAILURE);
-			}
-			sprintf(argv[*argc + 1], PCI_DOM":"PCI_BUS":"
-				PCI_DEVICE"."PCI_FUNC,
-				pd.pa.domain, pd.pa.bus, pd.pa.device,
-				pd.pa.function);
-			*argc += 2;
-			if (pd.numa_socket > numa_id) numa_id = pd.numa_socket;
-		loop_over:
-			dev_token = strtok_r(NULL, delim, &saveptr);
-		}
-		close(fd);
-		free(dev_tokenizer);
-	} else {
-		TRACE_ERROR("Error opening dpdk-face!\n");
-		exit(EXIT_FAILURE);
-	}
+// 	dev_tokenizer = strdup(dev_name_list);
+// 	if (dev_tokenizer == NULL) {
+// 		TRACE_ERROR("Can't allocate memory for dev_tokenizer!\n");
+// 		exit(EXIT_FAILURE);
+// 	}
+// 	fd = open(DEV_PATH, O_RDONLY);
+// 	if (fd != -1) {
+// 		dev_token = strtok_r(dev_tokenizer, delim, &saveptr);
+// 		while (dev_token != NULL) {
+// 			strcpy(pd.ifname, dev_token);
+// 			if (ioctl(fd, FETCH_PCI_ADDRESS, &pd) == -1) {
+// 				TRACE_DBG("Could not find pci info on dpdk "
+// 					  "device: %s. Is it a dpdk-attached "
+// 					  "interface?\n", dev_token);
+// 				goto loop_over;
+// 			}
+// 			argv[*argc] = strdup("-a");
+// 			argv[*argc + 1] = calloc(PCI_LENGTH, 1);
+// 			if (argv[*argc] == NULL ||
+// 			    argv[*argc + 1] == NULL) {
+// 				TRACE_ERROR("Memory allocation error!\n");
+// 				exit(EXIT_FAILURE);
+// 			}
+// 			sprintf(argv[*argc + 1], PCI_DOM":"PCI_BUS":"
+// 				PCI_DEVICE"."PCI_FUNC,
+// 				pd.pa.domain, pd.pa.bus, pd.pa.device,
+// 				pd.pa.function);
+// 			*argc += 2;
+// 			if (pd.numa_socket > numa_id) numa_id = pd.numa_socket;
+// 		loop_over:
+// 			dev_token = strtok_r(NULL, delim, &saveptr);
+// 		}
+// 		close(fd);
+// 		free(dev_tokenizer);
+// 	} else {
+// 		TRACE_ERROR("Error opening dpdk-face!\n");
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	/* add the terminating "" sequence */
-	argv[*argc] = end;
+// 	/* add the terminating "" sequence */
+// 	argv[*argc] = end;
 
-	return numa_id;
-}
+// 	return numa_id;
+// }
 #endif /* !DISABLE_DPDK */
 /*----------------------------------------------------------------------------*/
 int
@@ -303,20 +303,33 @@ SetNetEnv(char *dev_name_list, char *port_stat_list)
 				       RTE_CACHE_LINE_SIZE);
 		
 		/* initialize the rte env, what a waste of implementation effort! */
-		int argc = 6;//8;
-		char *argv[RTE_ARGC_MAX] = {"",
-					    "-c",
-					    cpumaskbuf,
-					    "-n",
-					    mem_channels,
-#if 0
-					    "--socket-mem",
-					    socket_mem_str,
-#endif
-					    "--proc-type=auto"
-		};
-		ret = probe_all_rte_devices(argv, &argc, dev_name_list);
-
+		int argc = 0;
+		char *argv[RTE_ARGC_MAX];
+		char mn_interfaces[256];
+		if(!CONFIG.use_mininet){	
+			// case that not use mininet
+			argc = 6;
+			argv[0] = "";
+			argv[1] = "-c";
+			argv[2] = cpumaskbuf;
+			argv[3] = "-n";
+			argv[4] = mem_channels;
+			argv[5] = "--proc-type=auto";
+			// probe_all_rte_devices(argv, &argc, dev_name_list);
+		} else {	
+			// case that use mininet
+			argc = 9;
+			argv[0] = "";
+			argv[1] = "-c";
+			argv[2] = cpumaskbuf;
+			argv[3] = "-n";
+			argv[4] = mem_channels;
+			argv[5] = "--proc-type=auto";
+			sprintf(mn_interfaces, "--vdev=eth_af_packet0,iface=%s,qpairs=8", CONFIG.mn_interfaces);
+			argv[6] = mn_interfaces;
+			argv[7] = "--file-prefix";
+			argv[8] = CONFIG.mn_prefix;
+		}
 
 		/* STEP 4: build up socket mem parameter */
 		sprintf(socket_mem_str, "%d", socket_mem);
@@ -458,7 +471,7 @@ SetNetEnv(char *dev_name_list, char *port_stat_list)
 		}
 #endif
 		/* check if process is primary or secondary */
-		CONFIG.multi_process_is_master = (eal_proc_type_detect() == RTE_PROC_PRIMARY) ?
+		CONFIG.multi_process_is_master = (rte_eal_process_type() == RTE_PROC_PRIMARY) ?
 			1 : 0;
 		
 #endif /* !DISABLE_DPDK */
