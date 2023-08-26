@@ -1,11 +1,18 @@
-TARGETS = epserver epwget
-CC = gcc -g -O3
-DPDK=0
-PS=0
+# TODO: Make this Makefile.in pretty
 
-# DPDK LIBRARY and HEADER
-DPDK_INC=../../dpdk/include
-DPDK_LIB=../../dpdk/lib/
+TARGETS = epserver epwget
+CC=gcc -g -O3 -Wall -Werror -fgnu89-inline
+DPDK=1
+PS=0
+NETMAP=0
+ONVM=0
+CCP=
+CFLAGS=-g -O2
+
+# Add arch-specific optimization
+ifeq ($(shell uname -m),x86_64)
+LIBS += -m64
+endif
 
 # mtcp library and header 
 MTCP_FLD    =../../mtcp/
@@ -15,45 +22,86 @@ MTCP_TARGET = ${MTCP_LIB}/libmtcp.a
 
 UTIL_FLD = ../../util
 UTIL_INC = -I${UTIL_FLD}/include
-UTIL_OBJ = ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o
+UTIL_OBJ = ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
 
-
-PS_DIR = ../../io_engine/
-PS_INC = ${PS_DIR}/include
+# util library and header
 INC = -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include
 LIBS = ${MTCP_LIB}
+
+# psio-specific variables
 ifeq ($(PS),1)
+PS_DIR = ../../io_engine/
+PS_INC = ${PS_DIR}/include
 INC += -I{PS_INC}
 LIBS += -lmtcp -L${PS_DIR}/lib -lps -lpthread -lnuma -lrt
 endif
 
-# CFLAGS for DPDK-related compilation
-INC += ${MTCP_INC}
-ifeq ($(DPDK),1)
-INC += -DENABLE_DPDK -DRTE_MACHINE_CPUFLAG_SSE -DRTE_MACHINE_CPUFLAG_SSE2 -DRTE_MACHINE_CPUFLAG_SSE3 \
-        -DRTE_MACHINE_CPUFLAG_SSSE3 -DRTE_MACHINE_CPUFLAG_SSE4_1 -DRTE_MACHINE_CPUFLAG_SSE4_2 \
-        -DRTE_MACHINE_CPUFLAG_AES -DRTE_MACHINE_CPUFLAG_PCLMULQDQ -DRTE_MACHINE_CPUFLAG_AVX \
-        -DRTE_COMPILE_TIME_CPUFLAGS=RTE_CPUFLAG_SSE,RTE_CPUFLAG_SSE2,RTE_CPUFLAG_SSE3,RTE_CPUFLAG_SSSE3,RTE_CPUFLAG_SSE4_1,RTE_CPUFLAG_SSE4_2,RTE_CPUFLAG_AES,RTE_CPUFLAG_PCLMULQDQ,RTE_CPUFLAG_AVX -I${DPDK_INC} \
-        -include ${DPDK_INC}/rte_config.h
+# netmap-specific variables
+ifeq ($(NETMAP),1)
+LIBS += -lmtcp -lpthread -lnuma -lrt
 endif
 
+# dpdk-specific variables
 ifeq ($(DPDK),1)
-LIBS += -m64 -g -O3 -pthread -lrt -march=native -Wl,-export-dynamic ${MTCP_FLD}/lib/libmtcp.a -L../../dpdk/lib -Wl,-lnuma -Wl,-lmtcp -Wl,-lpthread -Wl,-lrt -Wl,-ldl -Wl,--whole-archive -Wl,-lrte_distributor -Wl,-lrte_kni -Wl,-lrte_pipeline -Wl,-lrte_table -Wl,-lrte_port -Wl,-lrte_timer -Wl,-lrte_hash -Wl,-lrte_lpm -Wl,-lrte_power -Wl,-lrte_acl -Wl,-lrte_meter -Wl,-lrte_sched -Wl,-lm -Wl,-lrt -Wl,--start-group -Wl,-lrte_kvargs -Wl,-lrte_mbuf -Wl,-lrte_ip_frag -Wl,-lethdev -Wl,-lrte_malloc -Wl,-lrte_mempool -Wl,-lrte_ring -Wl,-lrte_eal -Wl,-lrte_cmdline -Wl,-lrte_cfgfile -Wl,-lrte_pmd_bond -Wl,-lrte_pmd_vmxnet3_uio -Wl,-lrte_pmd_i40e -Wl,-lrte_pmd_ixgbe -Wl,-lrte_pmd_e1000 -Wl,-lrte_pmd_ring -Wl,-lrt -Wl,-lm -Wl,-ldl -Wl,--end-group -Wl,--no-whole-archive
+# DPDK_MACHINE_LINKER_FLAGS=$${RTE_SDK}/$${RTE_TARGET}/lib/ldflags.txt
+# DPDK_MACHINE_LDFLAGS=$(shell cat ${DPDK_MACHINE_LINKER_FLAGS})
+PKGCONF = pkg-config
+
+CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+LDFLAGS += $(shell $(PKGCONF) --libs libdpdk)
+
+LIBS += -g -O3 -pthread -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp  $(LDFLAGS)
+endif
+
+# onvm-specific variables
+ifeq ($(ONVM),1)
+ifeq ($(RTE_TARGET),)
+$(error "Please define RTE_TARGET environment variable")
+endif
+
+INC += -I/onvm_nflib
+INC += -I/lib
+INC += -DENABLE_ONVM
+LIBS += /onvm_nflib/$(RTE_TARGET)/libonvm.a
+LIBS += /lib/$(RTE_TARGET)/lib/libonvmhelper.a -lm
+endif
+
+ifeq ($V,) # no echo
+	export MSG=@echo
+	export HIDE=@
+else
+	export MSG=@\#
+	export HIDE=
+endif
+
+ifeq ($(CCP), 1)
+# LIBCCP
+LIBCCP = $(MTCP_FLD)/src/libccp
+LIBS += -L$(LIBCCP) -lccp -lstartccp
+INC += -I$(LIBCCP)
 endif
 
 all: epserver epwget
 
 epserver.o: epserver.c
-	${CC} -c $< ${CFLAGS} ${INC}
+	$(MSG) "   CC $<"
+	$(HIDE) ${CC} -c $< ${CFLAGS} ${INC}
 
-epserver: epserver.o
-	${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
+epserver: epserver.o ${MTCP_FLD}/lib/libmtcp.a
+	$(MSG) "   LD $<"
+	$(HIDE) ${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
 
 epwget.o: epwget.c
-	${CC} -c $< ${CFLAGS} ${INC}
+	$(MSG) "   CC $<"
+	$(HIDE) ${CC} -c $< ${CFLAGS} ${INC}
 
-epwget: epwget.o
-	${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
+epwget: epwget.o ${MTCP_FLD}/lib/libmtcp.a
+	$(MSG) "   LD $<"
+	$(HIDE) ${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
 
 clean:
-	rm -f *~ *.o ${TARGETS} log_*
+	$(MSG) "   CLEAN $(TARGETS)"
+	$(HIDE) rm -f *~ *.o ${TARGETS} log_*
+
+distclean: clean
+	rm -rf Makefile
