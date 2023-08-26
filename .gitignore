@@ -65,3 +65,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+*.tar.gz*
+
+dpdk-21.11/
+dpdk-22.03/
+
