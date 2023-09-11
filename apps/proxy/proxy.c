@@ -270,7 +270,8 @@ CleanServerVariable(struct server_vars *sv)
 	sv->total_sent = 0;
 	sv->done = 0;
 	sv->rspheader_sent = 0;
-	sv->keep_alive = 0;
+	sv->send_len = 0;
+	// sv->keep_alive = 0;
 }
 
 void
@@ -280,7 +281,8 @@ CleanClientVariable(struct wget_vars *wv)
 	wv->total_read = 0;
 	wv->total_sent = 0;
 	wv->done = 0;
-	wv->keep_alive = 0;
+	// wv->keep_alive = 0;
+	wv->send_len = 0;
 }
 /*----------------------------------------------------------------------------*/
 void 
@@ -302,6 +304,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	int sockid;
 	if (sp->type == 1)
 	{
+		TRACE_CONFIG("Handle Send for server: sp->server_sockid = %d\n", sp->server_sockid);
 		sockid = sp->server_sockid;
 		sv = &ctx->svars[sp->server_sockid];
 		sent = 0;
@@ -343,6 +346,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	}
 	else
 	{
+		TRACE_CONFIG("Handle Send for client: sp->client_sockid = %d\n", sp->client_sockid);
 		sockid = sp->client_sockid;
 		wv = &ctx->wvars[sockid];
 		sent = 0;
@@ -352,6 +356,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 			if (len <= 0) {
 				break;
 			}
+			TRACE_CONFIG("wv->sendbuf:%s", wv->send_buf);
 			ret = mtcp_write(ctx->mctx, sockid,  
 					wv->send_buf + wv->total_sent, len);
 			if (ret < 0) {
@@ -379,6 +384,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 			else 
 			{
 				/* should not close here */
+				TRACE_CONFIG("should not be here: wv->keep_alive == 0!\n");
 			}
 		}
 	}
@@ -410,12 +416,15 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 	int sockid = type ? sp->server_sockid : sp->client_sockid;
 	struct server_vars* sv;
 	struct wget_vars* wv;
-	struct sockid_peer* sp_client; /* useful create the client part */
+	
+	
 
 	int copy_len;
-
+	TRACE_CONFIG("HandleReadEvent sp->type:%d, sp->client_sockid:%d, sp->server_sockid:%d\n", sp->type, sp->client_sockid, sp->server_sockid);
 	if (type == 1)
 	{
+		struct sockid_peer* sp_client;
+		struct mtcp_epoll_event ev_client;
 		int client_sockid = sp->client_sockid;
 		/* get sv_vars */
 		sv = &ctx->svars[sockid];
@@ -448,6 +457,7 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 				// sent = mtcp_write(ctx->mctx, client_sockid, buf, rd);
 				// assert (sent == rd);
 				TRACE_CONFIG("Sending successful to client socket\n");
+				ev.data.ptr = (void*)sp;
 				ev.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
 				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sockid, &ev);
 			}
@@ -472,8 +482,6 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 			
 			if (config_dict->func_dict->fault_injection == 1)
 			{
-
-
 				scode = 418;
 
 				time(&t_now);
@@ -520,10 +528,15 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 				sp_client = CreateConnection(ctx, config_dict->ip_dict[i].value, htons(8080), sockid);
 				sp->client_sockid = sp_client->client_sockid;
 			}
-			/* here should change the http header url part and host part in 
-			 * sv->request + sv->recv_len (header len sv->request_len)
-			 * we should check same as url, using buf and rd,
-			 */
+			else
+			{
+				/* init sp_client here */
+				sp_client = (struct sockid_peer*)calloc(1, sizeof(struct sockid_peer));
+				sp_client->type = 0;
+				sp_client->client_sockid = sp->client_sockid;
+				sp_client->server_sockid = sp->server_sockid;
+			}
+
 			wv = &ctx->wvars[sp->client_sockid];
 			host_posi = http_get_host(buf, rd, host, HOST_LEN);
 			/* changing url part and host part here*/
@@ -541,38 +554,63 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 			wv->keep_alive = sv->keep_alive;
 			//sent = mtcp_write(ctx->mctx, sp->client_sockid, wv->send_buf, strlen(sv->send_buf));
 			//assert(sent == strlen(sv->send_buf));
-			ev.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+			
+			/* server socket !!!!*/
+			ev.events = MTCP_EPOLLIN;
 			ev.data.ptr = (void*)sp;
 			mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sockid, &ev);
+
+			/* client socket */
+			ev_client.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+			ev_client.data.ptr = (void*)sp_client;
+			mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp->client_sockid, &ev_client);
 		}
 		return rd;
 	}
 	else 
 	{
 		/* type == 0, client data coming */
-		// wv = &ctx->wvars[sockid];
+		struct sockid_peer* sp_server;
+		struct mtcp_epoll_event ev_server;
+
 		sv = &ctx->svars[sp->server_sockid];
 		rd = mtcp_read(ctx->mctx, sockid, buf, HTTP_HEADER_LEN);
 		if (rd <= 0){
 			return rd;
 		}
+		TRACE_CONFIG("send_len should be 0 here: %d\n", sv->send_len);
 		copy_len = MIN(rd, HTTP_HEADER_LEN - sv->send_len);
 		memcpy(sv->send_buf + sv->send_len, (char*)buf, copy_len);
 		sv->send_len += copy_len;
-		sent = mtcp_write(ctx->mctx, sp->server_sockid, buf, rd);
-		assert (sent == rd);
-		TRACE_CONFIG("Sending successful to server socket\n");
-		ev.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+		
+		//sent = mtcp_write(ctx->mctx, sp->server_sockid, buf, rd);
+		//TRACE_CONFIG("sent: %d rd: %d\n", sent, rd);
+		//assert (sent == rd);
+		//TRACE_CONFIG("Sending successful to server socket\n");
+		
+		/* client event*/
+		ev.events = MTCP_EPOLLIN;
+		ev.data.ptr = (void*)sp;
 		mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sockid, &ev);
+
+		/* server event */
+		sp_server = (struct sockid_peer*)calloc(1, sizeof(struct sockid_peer));
+		sp_server->type = 1;
+		sp_server->server_sockid = sp->server_sockid;
+		sp_server->client_sockid = sp->client_sockid;
+		ev_server.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+		ev_server.data.ptr = (void*)sp_server;
+		mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp->server_sockid, &ev_server);
+
 		//SendUntilAvailable(ctx, sp);
 		/* after send, client should close here if not keepalive */
 		if (sv->keep_alive == FALSE)
 		{
 			mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_DEL, sockid, NULL);
 			mtcp_close(ctx->mctx, sockid);
+			TRACE_CONFIG("client closed! should not be there!");
 		}
-		// mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_DEL, sockid, NULL);
-		// mtcp_close(ctx->mctx, sockid);
+		return rd;
 	}
 	return -1;
 }
@@ -762,6 +800,7 @@ RunServerThread(void *arg)
 		}
 
 		do_accept = FALSE;
+		TRACE_CONFIG("nevents: %d\n", nevents);
 		for (i = 0; i < nevents; i++) {
 			struct sockid_peer* sp = (struct sockid_peer*)events[i].data.ptr;
 			int sockid = sp->type ? sp->server_sockid : sp->client_sockid;
@@ -814,15 +853,17 @@ RunServerThread(void *arg)
 			else if (events[i].events & MTCP_EPOLLOUT) 
 			{
 				struct sockid_peer* sp= (struct sockid_peer*)events[i].data.ptr;
+				TRACE_CONFIG("Handle EPOLLOUT:\n\ttype:%d server_sockid:%d, client_sockid:%d\n", sp->type, sp->server_sockid, sp->client_sockid);
 				if (sp->type == 1)
 				{
-					struct server_vars *sv = &ctx->svars[sp->server_sockid];
-					if (sv->rspheader_sent) {
-						SendUntilAvailable(ctx, sp);
-					} else {
-						TRACE_APP("Socket %d: Response header not sent yet.\n", 
-							sp->server_sockid);
-					}
+					// struct server_vars *sv = &ctx->svars[sp->server_sockid];
+					// if (sv->rspheader_sent) {
+					// 	SendUntilAvailable(ctx, sp);
+					// } else {
+					// 	TRACE_APP("Socket %d: Response header not sent yet.\n", 
+					// 		sp->server_sockid);
+					// }
+					SendUntilAvailable(ctx, sp);
 				}
 				else
 				{

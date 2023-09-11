@@ -1346,12 +1346,13 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
 
-
+	TRACE_CONFIG("try to search stream, using saddr: %u, sport: %u, dport: %u\n", ntohl(s_stream.saddr), ntohs(s_stream.sport), ntohs(s_stream.dport));
 
 	/* check daddr */
 
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
+		TRACE_CONFIG("not found in flow table\n");
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
 				seq, ack_seq, payloadlen, window, ifidx);
 		if (!cur_stream){
