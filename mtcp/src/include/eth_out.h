@@ -11,6 +11,6 @@
 
 uint8_t *
 EthernetOutput(struct mtcp_manager *mtcp, uint16_t h_proto, 
-		int nif, unsigned char* dst_haddr, uint16_t iplen);
+		int nif, unsigned char* src_haddr, unsigned char* dst_haddr, uint16_t iplen, int is_inner);
 
 #endif /* ETH_OUT_H */

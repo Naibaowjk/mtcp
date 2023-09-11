@@ -18,6 +18,8 @@
 #include "ccp.h"
 #endif
 
+#include "read_conf.h"
+
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((a)<(b)?(a):(b))
 
@@ -59,12 +61,25 @@ FilterSYNPacket(mtcp_manager_t mtcp, uint32_t ip, uint16_t port)
 		} else {
 			int i;
 
+			TRACE_CONFIG("Checking nic interface ip_addr \n");
 			for (i = 0; i < CONFIG.eths_num; i++) {
 				if (ip == CONFIG.eths[i].ip_addr) {
 					return TRUE;
 				}
 			}
-			TRACE_CONFIG("We don't have device with ip address %u\n", ip);
+			TRACE_CONFIG("We don't have device with ip address %u\nChecking service ip address\n", ip);
+			if (ip == config_dict->func_dict->server_ip) return TRUE;
+
+			TRACE_CONFIG("Not for the SERVICE IP\nChecking server pod ip address\n");
+
+			for (i = 0; i < config_dict->len; i++)
+			{
+				if (ip == config_dict->ip_dict[i].value){
+					TRACE_CONFIG("Find ip for pod Name: %s\n", config_dict->ip_dict[i].key);
+					return TRUE;
+				}
+			}
+
 			return FALSE;
 		}
 	}
@@ -75,13 +90,13 @@ FilterSYNPacket(mtcp_manager_t mtcp, uint32_t ip, uint16_t port)
 /*----------------------------------------------------------------------------*/
 static inline tcp_stream *
 HandlePassiveOpen(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph, 
-		const struct tcphdr *tcph, uint32_t seq, uint16_t window)
+		const struct tcphdr *tcph, uint32_t seq, uint16_t window, uint32_t ip_proxy)
 {
 	tcp_stream *cur_stream = NULL;
 
 	/* create new stream and add to flow hash table */
 	cur_stream = CreateTCPStream(mtcp, NULL, MTCP_SOCK_STREAM, 
-			iph->daddr, tcph->dest, iph->saddr, tcph->source);
+			ip_proxy, tcph->dest, iph->saddr, tcph->source);
 	if (!cur_stream) {
 		TRACE_ERROR("INFO: Could not allocate tcp_stream!\n");
 		return FALSE;
@@ -90,6 +105,14 @@ HandlePassiveOpen(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph,
 	cur_stream->sndvar->peer_wnd = window;
 	cur_stream->rcv_nxt = cur_stream->rcvvar->irs;
 	cur_stream->sndvar->cwnd = 1;
+
+	if (ip_proxy != iph->daddr) // daddr == server_ip, ip_proxy = eth[ifidx].ipaddr
+	{
+		/* cur_stream build for send pkt, dst recv is stream' src*/
+		cur_stream->saddr = ip_proxy;
+		cur_stream->saddr_ori = iph->daddr;
+	}
+	else cur_stream->saddr_ori = cur_stream->saddr;
 	ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, 
 			(tcph->doff << 2) - TCP_HEADER_LEN);
 
@@ -701,14 +724,23 @@ ProcessTCPPayload(mtcp_manager_t mtcp, tcp_stream *cur_stream,
 static inline tcp_stream *
 CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph, 
 		int ip_len, const struct tcphdr* tcph, uint32_t seq, uint32_t ack_seq,
-		int payloadlen, uint16_t window)
+		int payloadlen, uint16_t window, const int ifidx)
 {
 	tcp_stream *cur_stream;
 	int ret; 
+	uint32_t ip_proxy; /* this addr use for create the real proxy stream*/
+	
+	/* don't use physic ip here.*/	
+	if (iph->daddr == config_dict->func_dict->server_ip)
+	{
+		TRACE_CONFIG("iph->daddr == server_ip\n");
+		ip_proxy = CONFIG.eths[ifidx].ip_addr;
+	} 
+	else ip_proxy = iph->daddr;
 	
 	if (tcph->syn && !tcph->ack) {
 		/* handle the SYN */
-		ret = FilterSYNPacket(mtcp, iph->daddr, tcph->dest);
+		ret = FilterSYNPacket(mtcp, ip_proxy, tcph->dest);
 		if (!ret) {
 			TRACE_INFO("Refusing SYN packet.\n");
 			TRACE_DBG("Refusing SYN packet.\n");
@@ -716,7 +748,7 @@ CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *i
 			DumpIPPacket(mtcp, iph, ip_len);
 #endif
 			SendTCPPacketStandalone(mtcp, 
-					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+					ip_proxy, tcph->dest, iph->saddr, tcph->source, 
 					0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
 					NULL, 0, cur_ts, 0);
 
@@ -725,7 +757,7 @@ CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *i
 
 		/* now accept the connection */
 		cur_stream = HandlePassiveOpen(mtcp, 
-				cur_ts, iph, tcph, seq, window);
+				cur_ts, iph, tcph, seq, window, ip_proxy);
 		if (!cur_stream) {
 			TRACE_INFO("Not available space in flow pool.\n");
 			TRACE_DBG("Not available space in flow pool.\n");
@@ -733,7 +765,7 @@ CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *i
 			DumpIPPacket(mtcp, iph, ip_len);
 #endif
 			SendTCPPacketStandalone(mtcp, 
-					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+					ip_proxy, tcph->dest, iph->saddr, tcph->source, 
 					0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
 					NULL, 0, cur_ts, 0);
 
@@ -752,7 +784,7 @@ CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *i
 	} else {
 		TRACE_INFO("Weird packet comes\n");
 		TRACE_DBG("Weird packet comes.\n");
-		// DumpIPPacket(mtcp, iph, ip_len);
+		//DumpIPPacket(mtcp, iph, ip_len);
 #ifdef DBGMSG
 		DumpIPPacket(mtcp, iph, ip_len);
 #endif
@@ -762,6 +794,7 @@ CreateNewFlowHTEntry(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *i
 		   else (ACK bit is on):
 		   <SEQ=SEG.ACK><CTL=RST>
 		   */
+		/* ip_proxy not suitable for this */
 		if (tcph->ack) {
 			SendTCPPacketStandalone(mtcp, 
 					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
@@ -1251,7 +1284,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	struct tcphdr* tcph = (struct tcphdr *) ((u_char *)iph + (iph->ihl << 2));
 	uint8_t *payload    = (uint8_t *)tcph + (tcph->doff << 2);
 	int payloadlen = ip_len - (payload - (u_char *)iph);
-	tcp_stream s_stream;
+	tcp_stream s_stream;  // use to check hashtable
 	tcp_stream *cur_stream = NULL;
 	uint32_t seq = ntohl(tcph->seq);
 	uint32_t ack_seq = ntohl(tcph->ack_seq);
@@ -1259,6 +1292,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	uint16_t check;
 	int ret;
 	int rc = -1;
+	// int ifidx_fwd = ifidx ? 0 : 1;
 
 	if(tcph->syn){
 		TRACE_CONFIG("it's an syn packet\n");
@@ -1290,16 +1324,36 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 #if defined(NETSTAT) && defined(ENABLELRO)
 	mtcp->nstat.rx_gdptbytes += payloadlen;
 #endif /* NETSTAT */
+	
 
-	s_stream.saddr = iph->daddr;
-	s_stream.sport = tcph->dest;
+	if ( iph->daddr == config_dict->func_dict->server_ip )
+	{
+		s_stream.saddr_ori =  iph->daddr;
+		s_stream.sport_ori =  tcph->dest;
+
+		/* src is dst in recv */
+		s_stream.saddr = CONFIG.eths[ifidx].ip_addr;
+		s_stream.sport = tcph->dest;
+	}
+	else
+	{
+		s_stream.saddr_ori =  iph->daddr;
+		s_stream.sport_ori =  tcph->dest;
+		s_stream.saddr =  iph->daddr;
+		s_stream.sport =  tcph->dest;
+	}
+
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
+
+
+
+	/* check daddr */
 
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
-				seq, ack_seq, payloadlen, window);
+				seq, ack_seq, payloadlen, window, ifidx);
 		if (!cur_stream){
 			TRACE_CONFIG("Failed to create hash table entry\n");
 			return TRUE;
@@ -1311,7 +1365,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 			);
 		}
 	} else {
-		TRACE_CONFIG("Found Hash Table Entry for dest port %u\n", tcph->dest);
+		TRACE_CONFIG("Found Hash Table Entry for dest port %u\n", ntohs(tcph->dest));
 	}
 
 	/* Validate sequence. if not valid, ignore the packet */

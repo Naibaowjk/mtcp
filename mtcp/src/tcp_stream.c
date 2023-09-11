@@ -15,6 +15,7 @@
 #include "ccp.h"
 #endif
 
+
 #define TCP_MAX_SEQ 4294967295
 
 /*---------------------------------------------------------------------------*/
@@ -261,6 +262,7 @@ CreateTCPStream(mtcp_manager_t mtcp, socket_map_t socket, int type,
 	memset(stream->sndvar, 0, sizeof(struct tcp_send_vars));
 
 	stream->id = mtcp->g_id++;
+	stream->saddr_ori = saddr;
 	stream->saddr = saddr;
 	stream->sport = sport;
 	stream->daddr = daddr;

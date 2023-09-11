@@ -467,6 +467,7 @@ mtcp_bind(mctx_t mctx, int sockid,
 	mtcp->smap[sockid].opts |= MTCP_ADDR_BIND;
 
 	TRACE_CONFIG("Record bind port as %u\n", mtcp->smap[sockid].saddr.sin_port);
+	//TRACE_CONFIG("Record bind ip as %x\n", mtcp->smap[sockid].saddr.sin_addr);
 
 	return 0;
 }

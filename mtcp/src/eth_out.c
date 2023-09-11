@@ -13,6 +13,7 @@
 #include "arp.h"
 #include "eth_out.h"
 #include "debug.h"
+#include "vxlan_out.h"
 
 #ifndef TRUE
 #define TRUE (1)
@@ -34,7 +35,7 @@
 /*----------------------------------------------------------------------------*/
 uint8_t *
 EthernetOutput(struct mtcp_manager *mtcp, uint16_t h_proto, 
-		int nif, unsigned char* dst_haddr, uint16_t iplen)
+		int nif, unsigned char* src_haddr, unsigned char* dst_haddr, uint16_t iplen, int is_inner)
 {
 	uint8_t *buf;
 	struct ethhdr *ethh;
@@ -55,10 +56,18 @@ EthernetOutput(struct mtcp_manager *mtcp, uint16_t h_proto,
 		return NULL;
 	}
 	
-	buf = mtcp->iom->get_wptr(mtcp->ctx, eidx, iplen + ETHERNET_HEADER_LEN);
-	if (!buf) {
-		TRACE_CONFIG("Failed to get available write buffer\n");
-		return NULL;
+	if (is_inner == 0)
+	{
+		buf = mtcp->iom->get_wptr(mtcp->ctx, eidx, iplen + ETHERNET_HEADER_LEN);
+		if (!buf) {
+			TRACE_CONFIG("Failed to get available write buffer\n");
+			return NULL;
+		}
+		ethh = (struct ethhdr *)buf;
+	}
+	else  // should use vxlan
+	{
+		ethh = (struct ethhdr*)VxlanOutput(mtcp, iplen + ETHERNET_HEADER_LEN, eidx);
 	}
 	//memset(buf, 0, ETHERNET_HEADER_LEN + iplen);
 
@@ -68,24 +77,26 @@ EthernetOutput(struct mtcp_manager *mtcp, uint16_t h_proto,
 				dst_haddr[2], dst_haddr[3], 
 				dst_haddr[4], dst_haddr[5]);
 #endif
-
-	ethh = (struct ethhdr *)buf;
+	
+	/* for ARP situation, we should check src_haddr same as old */
+	
 	for (i = 0; i < ETH_ALEN; i++) {
-		ethh->h_source[i] = CONFIG.eths[eidx].haddr[i];
+		ethh->h_source[i] = src_haddr == NULL? CONFIG.eths[eidx].haddr[i] : src_haddr[i];
 		ethh->h_dest[i] = dst_haddr[i];
 	}
-	ethh->h_proto = htons(h_proto);
 
 	TRACE_CONFIG("src_hwaddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				CONFIG.eths[eidx].haddr[0], CONFIG.eths[eidx].haddr[1], 
-				CONFIG.eths[eidx].haddr[2], CONFIG.eths[eidx].haddr[3], 
-				CONFIG.eths[eidx].haddr[4], CONFIG.eths[eidx].haddr[5]);
+		CONFIG.eths[eidx].haddr[0], CONFIG.eths[eidx].haddr[1], 
+		CONFIG.eths[eidx].haddr[2], CONFIG.eths[eidx].haddr[3], 
+		CONFIG.eths[eidx].haddr[4], CONFIG.eths[eidx].haddr[5]);
 
 	TRACE_CONFIG("dst_hwaddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				dst_haddr[0], dst_haddr[1], 
-				dst_haddr[2], dst_haddr[3], 
-				dst_haddr[4], dst_haddr[5]);
+		dst_haddr[0], dst_haddr[1], 
+		dst_haddr[2], dst_haddr[3], 
+		dst_haddr[4], dst_haddr[5]);
 
+
+	ethh->h_proto = htons(h_proto);
 	return (uint8_t *)(ethh + 1);
 }
 /*----------------------------------------------------------------------------*/

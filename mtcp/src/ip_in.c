@@ -7,6 +7,7 @@
 #include "ps.h"
 #include "debug.h"
 #include "icmp.h"
+#include "udp_in.h"
 
 #define ETH_P_IP_FRAG   0xF800
 #define ETH_P_IPV6_FRAG 0xF6DD
@@ -52,13 +53,16 @@ ProcessIPv4Packet(mtcp_manager_t mtcp, uint32_t cur_ts,
 	
 	switch (iph->protocol) {
 		case IPPROTO_TCP:
-			TRACE_CONFIG("It's a TCP Packet\n");
+			TRACE_CONFIG("It's a TCP Packet. \n");
 			return ProcessTCPPacket(mtcp, cur_ts, ifidx, iph, ip_len);
 		case IPPROTO_ICMP:
-			TRACE_CONFIG("It's a ICMP Packet\n");
+			TRACE_CONFIG("It's a ICMP Packet. \n");
 			return ProcessICMPPacket(mtcp, iph, ip_len);
+		case IPPROTO_UDP:
+			TRACE_CONFIG("It's a UDP Packet. \n");
+			return ProcessUDPPacket(mtcp, cur_ts, ifidx, iph, ip_len);	
 		default:
-			TRACE_CONFIG("Drop unknown Packet\n");
+			TRACE_CONFIG("Drop unknown Packet. \n");
 			/* currently drop other protocols */
 			return FALSE;
 	}

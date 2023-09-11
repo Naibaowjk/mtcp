@@ -9,6 +9,7 @@
 #include "arp.h"
 #include "eth_out.h"
 #include "debug.h"
+#include "read_conf.h"
 
 #define ARP_PAD_LEN 18			/* arp pad length to fit 64B packet size */
 #define ARP_TIMEOUT_SEC 1		/* 1 second arp timeout */
@@ -93,6 +94,18 @@ GetHWaddr(uint32_t ip)
 
 	return haddr;
 }
+
+/*--------------------------------vxlan---------------------------------------*/
+unsigned char *
+GetDestinationHWaddr_Vxlan(uint32_t dip)
+{
+	if (dip == config_dict->vxlan_dict->IP_PC1) 
+		return (unsigned char*)config_dict->vxlan_dict->MAC_PC1;
+	else
+		return (unsigned char*)config_dict->vxlan_dict->MAC_PC3;
+	return NULL;
+}
+
 /*----------------------------------------------------------------------------*/
 unsigned char *
 GetDestinationHWaddr(uint32_t dip, uint8_t is_gateway)
@@ -160,7 +173,7 @@ ARPOutput(struct mtcp_manager *mtcp, int nif, int opcode,
 
 	/* Allocate a buffer */
 	struct arphdr *arph = (struct arphdr *)EthernetOutput(mtcp, 
-			ETH_P_ARP, nif, dst_haddr, sizeof(struct arphdr));
+			ETH_P_ARP, nif, NULL, dst_haddr, sizeof(struct arphdr), 1);
 	if (!arph) {
 		return -1;
 	}

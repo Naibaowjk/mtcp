@@ -12,6 +12,9 @@ GetHWaddr(uint32_t ip);
 unsigned char *
 GetDestinationHWaddr(uint32_t dip, uint8_t is_gateway);
 
+unsigned char *
+GetDestinationHWaddr_Vxlan(uint32_t dip);
+
 void 
 RequestARP(mtcp_manager_t mtcp, uint32_t ip, int nif, uint32_t cur_ts);
 

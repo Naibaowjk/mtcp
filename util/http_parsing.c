@@ -204,29 +204,57 @@ http_get_http_version_resp(char * data, int len, char* value, int value_len)
 	return value;
 }
 /*--------------------------------------------------------------------------*/
-char*
-http_get_url(char * data, int data_len, char* value, int value_len)
+int
+http_get_url(char* data, int data_len, char* value, int value_len)
 {
 	char *ret = data;
 	char *temp;
 	int i = 0;
 
-	if (strncmp(data, HTTP_GET, sizeof(HTTP_GET)-1)) {
-		*value = 0;
-		return NULL;
-	}
-	
-	ret += sizeof(HTTP_GET);
+    if (strncmp(data, HTTP_GET, sizeof(HTTP_GET) - 1) == 0) {
+        ret += sizeof(HTTP_GET) - 1;
+    } else if (strncmp(data, HTTP_POST, sizeof(HTTP_POST) - 1) == 0) {
+        ret += sizeof(HTTP_POST) - 1;
+    } else {
+        *value = 0;
+        return -1;
+    }
 	while (*ret && SPACE_OR_TAB(*ret)) 
 		ret++;
 
-	temp = ret;
+	/* no / in url here */
+	temp = ++ret;
 	while (*temp && *temp != ' ' && i < value_len - 1) {
 		value[i++] = *temp++;
 	}
 	value[i] = 0;
 	
-	return ret;
+	return ret - data;
+}
+/*---------------------------------------------------------------------------*/
+int
+http_get_host(char* data, int data_len, char* value, int value_len)
+{
+	char *ret = strstr(data, HOST_HDR);
+    char *temp;
+    int i = 0;
+
+    if (!ret) {
+        *value = 0;
+        return -1;
+    }
+
+    ret += sizeof(HOST_HDR) - 1;
+    while (*ret && SPACE_OR_TAB(*ret))
+        ret++;
+
+    temp = ret;
+    while (*temp && *temp != ':' && *temp != '\r' && *temp != '\n' && i < value_len - 1) {
+        value[i++] = *temp++;
+    }
+    value[i] = 0;
+
+    return ret - data;
 }
 /*---------------------------------------------------------------------------*/
 int 
@@ -273,3 +301,43 @@ http_get_maxage(char *cache_ctl, int len)
 	return -1;
 }
 
+int http_change_host_url(char* buf_new, int len_new, 
+								char* buf_old, int len_old, 
+								char* host_new, int host_posi, int host_len_old,
+								char *url_new, int url_posi, int url_len_old)
+{
+	int url_len_new = strlen(url_new);
+	int host_len_new = strlen(host_new);
+     
+	if (len_new < len_old - host_len_old - url_len_old + host_len_new + url_len_old) {
+        return -1;  // 新缓冲区长度不足
+	}
+
+	// copy data front url
+    int index_new = 0;
+    int index_old = 0;
+	while (index_old < url_posi)
+	{
+		buf_new[index_new++] = buf_old[index_old++];
+	}
+
+	// copy url
+ 	strcpy(&buf_new[index_new], url_new);
+	index_old += url_len_old;
+	index_new += url_len_new;
+ 
+    // copy data front host
+	while (index_old < host_posi) {
+        buf_new[index_new++] = buf_old[index_old++]; 
+    }
+	strcpy(&buf_new[index_new], host_new);
+	index_old += host_len_old;
+	index_new += host_len_new;
+    // 复制剩下的部分
+    while (index_old < len_old) {
+        buf_new[index_new++] = buf_old[index_old++];
+    }
+	buf_new[index_new] = 0;
+
+    return index_new;  // 返回新缓冲区中的数据长度
+}

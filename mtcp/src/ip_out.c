@@ -5,8 +5,17 @@
 #include "eth_out.h"
 #include "arp.h"
 #include "debug.h"
+#include "read_conf.h"
 
 #define DISABLE_HWCSUM
+/*------------------ for vxlan ip out ----------------------------------------*/
+inline int
+GetOutputInterface_Vxlan(uint32_t daddr)
+{
+	if (daddr == config_dict->vxlan_dict->IP_PC1) return 0;
+	else return 1;
+	return -1;
+}
 
 /*----------------------------------------------------------------------------*/
 inline int
@@ -43,11 +52,13 @@ GetOutputInterface(uint32_t daddr, uint8_t *is_external)
 /*----------------------------------------------------------------------------*/
 uint8_t *
 IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol, 
-		uint16_t ip_id, uint32_t saddr, uint32_t daddr, uint16_t payloadlen)
+		uint16_t ip_id, uint32_t saddr, uint32_t daddr, uint16_t payloadlen, int is_inner)
 {
 	struct iphdr *iph;
 	int nif;
-	unsigned char * haddr, is_external;
+	unsigned char* dst_haddr;
+	unsigned char* src_haddr;
+	unsigned char is_external;
 	int rc = -1;
 
 	nif = GetOutputInterface(daddr, &is_external);
@@ -55,27 +66,35 @@ IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol,
 		return NULL;
 
 	struct in_addr ip_addr;
-    ip_addr.s_addr = daddr;
+	ip_addr.s_addr = daddr;
 	TRACE_CONFIG("Try to obtain hwaddr of %s\n", inet_ntoa(ip_addr));
-	haddr = GetDestinationHWaddr(daddr, is_external);
-	if (!haddr) {
-#if 0
-		uint8_t *da = (uint8_t *)&daddr;
-		TRACE_INFO("[WARNING] The destination IP %u.%u.%u.%u "
-				"is not in ARP table!\n",
-				da[0], da[1], da[2], da[3]);
-#endif
+	dst_haddr = GetDestinationHWaddr(daddr, is_external);
+	src_haddr = GetDestinationHWaddr(saddr, is_external);
+	if (!dst_haddr) {
+		TRACE_CONFIG("Don't find mac, better not here!\n");
+		#if 0
+			uint8_t *da = (uint8_t *)&daddr;
+			TRACE_INFO("[WARNING] The destination IP %u.%u.%u.%u "
+					"is not in ARP table!\n",
+					da[0], da[1], da[2], da[3]);
+		#endif
 		RequestARP(mtcp, (is_external) ? ((CONFIG.gateway)->daddr) : daddr,
-			   nif, mtcp->cur_ts);
+			nif, mtcp->cur_ts);
 		return NULL;
 	}
-	TRACE_CONFIG("Obtained: %02X:%02X:%02X:%02X:%02X:%02X\n",
-		haddr[0], haddr[1], 
-		haddr[2], haddr[3], 
-		haddr[4], haddr[5]);
+	TRACE_CONFIG("Obtained dst_haddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
+		dst_haddr[0], dst_haddr[1], 
+		dst_haddr[2], dst_haddr[3], 
+		dst_haddr[4], dst_haddr[5]);
+
+	TRACE_CONFIG("Obtained src_haddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
+		src_haddr[0], src_haddr[1], 
+		src_haddr[2], src_haddr[3], 
+		src_haddr[4], src_haddr[5]);
+
 	
 	iph = (struct iphdr *)EthernetOutput(mtcp, 
-			ETH_P_IP, nif, haddr, payloadlen + IP_HEADER_LEN);
+			ETH_P_IP, nif, src_haddr, dst_haddr, payloadlen + IP_HEADER_LEN, is_inner);
 	if (!iph) {
 		return NULL;
 	}
@@ -114,12 +133,15 @@ IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol,
 	return (uint8_t *)(iph + 1);
 }
 /*----------------------------------------------------------------------------*/
+/* this function only called by TCP, we can just change ip_daddr here */
 uint8_t *
-IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen)
+IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen, int is_inner)
 {
 	struct iphdr *iph;
 	int nif;
-	unsigned char *haddr, is_external = 0;
+	unsigned char* dst_haddr;
+	unsigned char* src_haddr;
+	unsigned char is_external = 0;
 	int rc = -1;
 
 	if (stream->sndvar->nif_out >= 0) {
@@ -130,8 +152,9 @@ IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen)
 		stream->is_external = is_external;
 	}
 
-	haddr = GetDestinationHWaddr(stream->daddr, stream->is_external);
-	if (!haddr) {
+	dst_haddr = GetDestinationHWaddr(stream->daddr, stream->is_external);
+	src_haddr = GetDestinationHWaddr(stream->saddr_ori, stream->is_external);
+	if (!dst_haddr) {
 #if 0
 		uint8_t *da = (uint8_t *)&stream->daddr;
 		TRACE_INFO("[WARNING] The destination IP %u.%u.%u.%u "
@@ -146,7 +169,7 @@ IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen)
 	}
 	
 	iph = (struct iphdr *)EthernetOutput(mtcp, ETH_P_IP, 
-			stream->sndvar->nif_out, haddr, tcplen + IP_HEADER_LEN);
+			stream->sndvar->nif_out, src_haddr, dst_haddr, tcplen + IP_HEADER_LEN, is_inner);
 	if (!iph) {
 		return NULL;
 	}
@@ -159,7 +182,7 @@ IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen)
 	iph->frag_off = htons(0x4000);	// no fragmentation
 	iph->ttl = 64;
 	iph->protocol = IPPROTO_TCP;
-	iph->saddr = stream->saddr;
+	iph->saddr = stream->saddr_ori;
 	iph->daddr = stream->daddr;
 	iph->check = 0;
 

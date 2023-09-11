@@ -200,12 +200,12 @@ PrintThreadNetworkStats(mtcp_manager_t mtcp, struct net_stat *ns)
 		ns->tx_bytes[i] = mtcp->nstat.tx_bytes[i] - mtcp->p_nstat.tx_bytes[i];
 #if NETSTAT_PERTHREAD
 		if (CONFIG.eths[i].stat_print) {
-			fprintf(stderr, "[CPU%2d] %s flows: %6u, "
-					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
-					"TX: %7ld(pps), %5.2lf(Gbps)\n", 
-					mtcp->ctx->cpu, CONFIG.eths[i].dev_name, mtcp->flow_cnt, 
-					ns->rx_packets[i], ns->rx_errors[i], GBPS(ns->rx_bytes[i]), 
-				ns->tx_packets[i], GBPS(ns->tx_bytes[i]));
+			// fprintf(stderr, "[CPU%2d] %s flows: %6u, "
+			// 		"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
+			// 		"TX: %7ld(pps), %5.2lf(Gbps)\n", 
+			// 		mtcp->ctx->cpu, CONFIG.eths[i].dev_name, mtcp->flow_cnt, 
+			// 		ns->rx_packets[i], ns->rx_errors[i], GBPS(ns->rx_bytes[i]), 
+			// 	ns->tx_packets[i], GBPS(ns->tx_bytes[i]));
 		}
 #endif
 	}
@@ -288,7 +288,7 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 	memset(&g_nstat, 0, sizeof(struct net_stat));
 	for (i = 0; i < CONFIG.num_cores; i++) {
 		if (running[i]) {
-			PrintThreadNetworkStats(g_mtcp[i], &ns);
+			// PrintThreadNetworkStats(g_mtcp[i], &ns);
 #if NETSTAT_TOTAL
 			gflow_cnt += g_mtcp[i]->flow_cnt;
 			for (j = 0; j < CONFIG.eths_num; j++) {
@@ -308,14 +308,14 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 	}
 #if NETSTAT_TOTAL
 	for (i = 0; i < CONFIG.eths_num; i++) {
-		if (CONFIG.eths[i].stat_print) {
-			fprintf(stderr, "[ ALL ] %s flows: %6u, "
-					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
-					"TX: %7ld(pps), %5.2lf(Gbps)\n", CONFIG.eths[i].dev_name, 
-					gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
-					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
-					GBPS(g_nstat.tx_bytes[i]));
-		}
+		// if (CONFIG.eths[i].stat_print) {
+		// 	fprintf(stderr, "[ ALL ] %s flows: %6u, "
+		// 			"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
+		// 			"TX: %7ld(pps), %5.2lf(Gbps)\n", CONFIG.eths[i].dev_name, 
+		// 			gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
+		// 			GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
+		// 			GBPS(g_nstat.tx_bytes[i]));
+		// }
 	}
 #ifdef ENABLELRO
 	fprintf(stderr, "[ ALL ] Goodput RX: %5.2lf(Gbps), TX: %5.2lf(Gbps)\n",
@@ -327,7 +327,7 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 	memset(&g_runstat, 0, sizeof(struct run_stat));
 	for (i = 0; i < CONFIG.num_cores; i++) {
 		if (running[i]) {
-			PrintThreadRoundStats(g_mtcp[i], &rs);
+			// PrintThreadRoundStats(g_mtcp[i], &rs);
 #if 0
 			g_runstat.rounds += rs.rounds;
 			g_runstat.rounds_rx += rs.rounds_rx;

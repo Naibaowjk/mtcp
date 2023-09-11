@@ -19,7 +19,7 @@ ProcessPacket(mtcp_manager_t mtcp, const int ifidx,
 
 #ifdef NETSTAT
 	mtcp->nstat.rx_packets[ifidx]++;
-	mtcp->nstat.rx_bytes[ifidx] += len + 24;
+	mtcp->nstat.rx_bytes[ifidx] += len + 24; //don't know why add 24 here.
 #endif /* NETSTAT */
 
 #if 0

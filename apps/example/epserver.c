@@ -23,6 +23,7 @@
 #include "http_parsing.h"
 #include "netlib.h"
 #include "debug.h"
+#include "read_conf.h"
 
 #define MAX_FLOW_NUM  (10000)
 
@@ -460,7 +461,9 @@ RunServerThread(void *arg)
 				/* if the event is for the listener, accept connection */
 				do_accept = TRUE;
 
-			} else if (events[i].events & MTCP_EPOLLERR) {
+			} 
+			else if (events[i].events & MTCP_EPOLLERR) 
+			{
 				int err;
 				socklen_t len = sizeof(err);
 
@@ -479,7 +482,9 @@ RunServerThread(void *arg)
 				CloseConnection(ctx, events[i].data.sockid, 
 						&ctx->svars[events[i].data.sockid]);
 
-			} else if (events[i].events & MTCP_EPOLLIN) {
+			} 
+			else if (events[i].events & MTCP_EPOLLIN) 
+			{
 				ret = HandleReadEvent(ctx, events[i].data.sockid, 
 						&ctx->svars[events[i].data.sockid]);
 
@@ -495,7 +500,9 @@ RunServerThread(void *arg)
 					}
 				}
 
-			} else if (events[i].events & MTCP_EPOLLOUT) {
+			} 
+			else if (events[i].events & MTCP_EPOLLOUT) 
+			{
 				struct server_vars *sv = &ctx->svars[events[i].data.sockid];
 				if (sv->rspheader_sent) {
 					SendUntilAvailable(ctx, events[i].data.sockid, sv);
@@ -504,7 +511,9 @@ RunServerThread(void *arg)
 							events[i].data.sockid);
 				}
 
-			} else {
+			} 
+			else 
+			{
 				assert(0);
 			}
 		}
@@ -570,6 +579,8 @@ main(int argc, char **argv)
 	core_limit = num_cores;
 	process_cpu = -1;
 	dir = NULL;
+
+	read_config();
 
 	if (argc < 2) {
 		TRACE_CONFIG("$%s directory_to_service\n", argv[0]);

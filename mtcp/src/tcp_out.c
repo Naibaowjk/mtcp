@@ -156,7 +156,7 @@ SendTCPPacketStandalone(struct mtcp_manager *mtcp,
 	}
 
 	tcph = (struct tcphdr *)IPOutputStandalone(mtcp, IPPROTO_TCP, 0, 
-			saddr, daddr, TCP_HEADER_LEN + optlen + payloadlen);
+			saddr, daddr, TCP_HEADER_LEN + optlen + payloadlen, 0);
 	if (tcph == NULL) {
 		return ERROR;
 	}
@@ -231,6 +231,7 @@ SendTCPPacket(struct mtcp_manager *mtcp, tcp_stream *cur_stream,
 	uint8_t wscale = 0;
 	uint32_t window32 = 0;
 	int rc = -1;
+	int is_inner = 1;
 
 	optlen = CalculateOptionLength(flags);
 	if (payloadlen + optlen > cur_stream->sndvar->mss) {
@@ -239,7 +240,7 @@ SendTCPPacket(struct mtcp_manager *mtcp, tcp_stream *cur_stream,
 	}
 
 	tcph = (struct tcphdr *)IPOutput(mtcp, cur_stream, 
-			TCP_HEADER_LEN + optlen + payloadlen);
+			TCP_HEADER_LEN + optlen + payloadlen, is_inner);
 	if (tcph == NULL) {
 		return -2;
 	}
@@ -333,7 +334,7 @@ SendTCPPacket(struct mtcp_manager *mtcp, tcp_stream *cur_stream,
 	if (rc == -1)
 		tcph->check = TCPCalcChecksum((uint16_t *)tcph, 
 					      TCP_HEADER_LEN + optlen + payloadlen, 
-					      cur_stream->saddr, cur_stream->daddr);
+					      cur_stream->saddr_ori, cur_stream->daddr);
 #endif
 	
 	cur_stream->snd_nxt += payloadlen;

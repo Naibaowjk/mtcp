@@ -171,6 +171,9 @@ typedef struct tcp_stream
 	uint32_t daddr;			/* in network order */
 	uint16_t sport;			/* in network order */
 	uint16_t dport;			/* in network order */
+
+	uint32_t saddr_ori;		/* in network order */
+	uint16_t sport_ori;		/* in network order */
 	
 	uint8_t state;			/* tcp state */
 	uint8_t close_reason;	/* close reason */
