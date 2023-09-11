@@ -69,7 +69,11 @@
 
 #endif /* INFO */
 
+#ifdef DCONFIG
 #define TRACE_CONFIG(f, m...) fprintf(stderr, f, ##m)
+#else
+#define TRACE_CONFIG(f, m...) (void)0
+#endif
 
 #ifdef DBGLOG
 #define TRACE_LOG(f, m...) TRACE_INFO(f, ##m)

@@ -39,16 +39,18 @@ endif
 # INFO        	= Enable macro to print general statements
 # DBGERR      	= Enable macro to print error statements
 # DBGCERR     	= Enable macro to print error statements
+# DCONFIG       = Enable macro to print config statements
 #
 
-GCC_OPT += -Wall -fPIC -fgnu89-inline -Werror
+GCC_OPT += -Wall -fPIC -fgnu89-inline -Werror -Wno-error=unused-variable -Wno-error=unused-but-set-variable
 #DBG_OPT = -DDBGMSG -DDBGFUNC -DSTREAM -DSTATE -DTSTAT -DAPP -DEPOLL
 #DBG_OPT = -DDBGMSG -DDBGFUNC -DSTREAM -DSTATE
 #DBG_OPT += -DPKTDUMP
 #DBG_OPT += -DDUMP_STREAM
 #GCC_OPT += -g -DNETSTAT -DINFO -DDBGERR -DDBGCERR
-GCC_OPT += -DNDEBUG -g -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR 
+#GCC_OPT += -DNDEBUG -g -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR 
 #GCC_OPT += -DNDEBUG -g -DNETSTAT -DINFO -DDBGERR -DDBGCERR
+GCC_OPT += -O3 -DDBGEERR -DDBGCERR -g
 GCC_OPT += $(DBG_OPT)
 GCC_OPT += -D__USRLIB__
 

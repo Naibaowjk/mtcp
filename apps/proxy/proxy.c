@@ -460,18 +460,19 @@ HandleReadEvent(struct thread_context *ctx, struct sockid_peer* sp)
 		else
 		{
 			/* find http header in server */
-			/* check if set fault injection */
+			sv->keep_alive = TRUE;
+			if (http_header_str_val(sv->request, "Connection: ", 
+						strlen("Connection: "), keepalive_str, 128)) {	
+				if (strstr(keepalive_str, "Keep-Alive")) {
+					sv->keep_alive = TRUE;
+				} else if (strstr(keepalive_str, "Close")) {
+					sv->keep_alive = FALSE;
+				}
+			}
+			
 			if (config_dict->func_dict->fault_injection == 1)
 			{
-				sv->keep_alive = FALSE;
-				if (http_header_str_val(sv->request, "Connection: ", 
-							strlen("Connection: "), keepalive_str, 128)) {	
-					if (strstr(keepalive_str, "Keep-Alive")) {
-						sv->keep_alive = TRUE;
-					} else if (strstr(keepalive_str, "Close")) {
-						sv->keep_alive = FALSE;
-					}
-				}
+
 
 				scode = 418;
 
