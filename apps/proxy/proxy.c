@@ -693,7 +693,7 @@ InitializeServerThread(int core)
 
 	for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
 	{
-		ret = mtcp_init_rss(mtcx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
+		ret = mtcp_init_rss(ctx->mtcx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
 		printf("init rss for server-%d: %d", i+1, ret);
 	}
 	
