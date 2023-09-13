@@ -303,7 +303,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	int sockid;
 	if (sp->type == 1)
 	{
-		TRACE_CONFIG("Handle Send for server: sp->server_sockid = %d\n", sp->server_sockid);
+		printf("[CPU:%d SendUntilAvailble] Handle Send for server: sp->server_sockid = %d\n",ctx->mtcx->cpu, sp->server_sockid);
 		sockid = sp->server_sockid;
 		sv = &ctx->svars[sp->server_sockid];
 		sent = 0;
@@ -345,7 +345,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	}
 	else
 	{
-		TRACE_CONFIG("Handle Send for client: sp->client_sockid = %d\n", sp->client_sockid);
+		printf("[CPU:%d SendUntilAvailble] Handle Send for client: sp->client_sockid = %d\n",ctx->mtcx->cpu, sp->client_sockid);
 		sockid = sp->client_sockid;
 		wv = &ctx->wvars[sockid];
 		sent = 0;
@@ -355,14 +355,14 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 			if (len <= 0) {
 				break;
 			}
-			TRACE_CONFIG("wv->sendbuf:%s\n", wv->send_buf);
+			printf("wv->sendbuf:\n%s\n", wv->send_buf);
 			ret = mtcp_write(ctx->mctx, sockid,  
 					wv->send_buf + wv->total_sent, len);
 			if (ret < 0) {
-				TRACE_CONFIG("Connection closed with client.\n");
+				printf("Connection closed with client.\n");
 				break;
 			}
-			TRACE_CONFIG("Socket %d: mtcp_write try: %d, ret: %d\n", sockid, len, ret);
+			printf("Socket %d: mtcp_write try: %d, ret: %d\n", sockid, len, ret);
 			sent += ret;
 			wv->total_sent += ret;
 		}
@@ -383,7 +383,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 			else 
 			{
 				/* should not close here */
-				TRACE_CONFIG("should not be here: wv->keep_alive == 0!\n");
+				printf("should not be here: wv->keep_alive == 0!\n");
 			}
 		}
 	}
@@ -418,7 +418,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
     int i;
 	int copy_len;
 
-	TRACE_CONFIG("HandleReadEvent sp->type:%d, sp->client_sockid:%d, sp->server_sockid:%d\n", sp->type, sp->client_sockid, sp->server_sockid);
+	printf("[CPU:%d HandleReadEvent] sp->type:%d, sp->client_sockid:%d, sp->server_sockid:%d\n", ctx->mctx->cpu, sp->type, sp->client_sockid, sp->server_sockid);
 	
 	/* init server_sp, client_sp */
 	if (sp->type == 0) // client events
@@ -451,7 +451,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
 		{
 			mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_DEL, sp->client_sockid, NULL);
 			mtcp_close(ctx->mctx, sp->client_sockid);
-			TRACE_CONFIG("client closed! should not be there!");
+			printf("client closed! should not be there!");
 		}
 		return rd;
 
@@ -529,7 +529,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
 			assert(copy_len >= 0);
 			/* we should copy here because we need to change URL and HOST */
 			rd = mtcp_read(ctx->mctx, sp_server->server_sockid, buf, copy_len);
-			TRACE_CONFIG("[HandleReadEvents - Routing] copy_len: %d, rd: %d\n", copy_len, rd);
+			printf("[Routing] mtcp_read size copy_len(want): %d, rd(real): %d\n", copy_len, rd);
 			/* check if recv 0 */
 			if (rd <= 0)
 			{
@@ -574,13 +574,13 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
 					(config_dict->ip_dict[i].value & 0x0000FF00) >> 8,
 					(config_dict->ip_dict[i].value & 0x00FF0000) >> 16,
             		(config_dict->ip_dict[i].value & 0xFF000000) >> 24);
-				TRACE_CONFIG("send_len: %d\nsend_buf: %s\n", wv->send_len, wv->send_buf);
+				printf("[Routing] before send: send_len: %d\nsend_buf: \n%s\n", wv->send_len, wv->send_buf);
 				change_len = http_change_host_url(wv->send_buf + wv->send_len, copy_len+10, buf, rd, 
 									host_new, host_posi, strlen(host), 
 									url_new, url_posi, strlen(url));
-				TRACE_CONFIG("Write in wv->sendbuf: %s\n", wv->send_buf + wv->send_len);
+				printf("Write in wv->sendbuf: \n%s\n", wv->send_buf + wv->send_len);
 				wv->send_len += change_len;
-				TRACE_CONFIG("changed_len:%d, new wv->send_len:%d, wv->send_buf:\n%s\n", change_len, wv->send_len, wv->send_buf);
+				printf("changed_len:%d, new wv->send_len:%d, wv->send_buf:\n%s\n", change_len, wv->send_len, wv->send_buf);
 				/* server socket */
 				ev_server.events = MTCP_EPOLLIN;
 				ev_server.data.ptr = (void*)sp_server;
@@ -598,7 +598,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
 				wv = &ctx->wvars[sp_server->client_sockid];
 				/* already copyed, memcpy to send_buf */
 				memcpy(wv->send_buf + wv->send_len, (char*)buf, rd);
-				TRACE_CONFIG("[HandleReadEvents - Routing] ready to send:\n%s\n", wv->send_buf + wv->send_len);
+				printf("[HandleReadEvents - Routing] ready to send:\n%s\n", wv->send_buf + wv->send_len);
 				wv->send_len += rd;
 
 				/* server socket */
@@ -803,10 +803,10 @@ RunServerThread(void *arg)
 		}
 
 		do_accept = FALSE;
-		TRACE_CONFIG("nevents: %d\n", nevents);
+		printf("cpu: %d nevents: %d\n", core, nevents);
 		for (i = 0; i < nevents; i++) {
 			struct sockid_peer* sp = (struct sockid_peer*)events[i].data.ptr;
-			TRACE_CONFIG("current events: %x\n, sp->type:%d, cid:%d, sid:%d\n", events[i].events, sp->type, sp->client_sockid, sp->server_sockid);
+			printf("current events: %x\n, sp->type:%d, cid:%d, sid:%d\n", events[i].events, sp->type, sp->client_sockid, sp->server_sockid);
 			int sockid = sp->type ? sp->server_sockid : sp->client_sockid;
 			if (sockid == listener && sp->type == 1) {
 				/* if the event is for the listener, accept connection */
@@ -857,7 +857,7 @@ RunServerThread(void *arg)
 			else if (events[i].events & MTCP_EPOLLOUT) 
 			{
 				struct sockid_peer* sp= (struct sockid_peer*)events[i].data.ptr;
-				TRACE_CONFIG("Handle EPOLLOUT:\n\ttype:%d server_sockid:%d, client_sockid:%d\n", sp->type, sp->server_sockid, sp->client_sockid);
+				printf("Handle EPOLLOUT:\n\ttype:%d server_sockid:%d, client_sockid:%d\n", sp->type, sp->server_sockid, sp->client_sockid);
 				if (sp->type == 1)
 				{
 					// struct server_vars *sv = &ctx->svars[sp->server_sockid];
@@ -918,7 +918,7 @@ SignalHandler(int signum)
 static void
 printHelp(const char *prog_name)
 {
-	TRACE_CONFIG("%s -p <path_to_www/> -f <mtcp_conf_file> "
+	printf("%s -p <path_to_www/> -f <mtcp_conf_file> "
 		     "[-N num_cores] [-c <per-process core_id>] [-h]\n",
 		     prog_name);
 	exit(EXIT_SUCCESS);
@@ -945,7 +945,7 @@ main(int argc, char **argv)
 	read_config();
 
 	if (argc < 2) {
-		TRACE_CONFIG("$%s directory_to_service\n", argv[0]);
+		printf("$%s directory_to_service\n", argv[0]);
 		return FALSE;
 	}
 
@@ -956,7 +956,7 @@ main(int argc, char **argv)
 			www_main = optarg;
 			dir = opendir(www_main);
 			if (!dir) {
-				TRACE_CONFIG("Failed to open %s.\n", www_main);
+				printf("Failed to open %s.\n", www_main);
 				perror("opendir");
 				return FALSE;
 			}
@@ -964,7 +964,7 @@ main(int argc, char **argv)
 		case 'N':
 			core_limit = mystrtol(optarg, 10);
 			if (core_limit > num_cores) {
-				TRACE_CONFIG("CPU limit should be smaller than the "
+				printf("CPU limit should be smaller than the "
 					     "number of CPUs: %d\n", num_cores);
 				return FALSE;
 			}
@@ -983,7 +983,7 @@ main(int argc, char **argv)
 		case 'c':
 			process_cpu = mystrtol(optarg, 10);
 			if (process_cpu > core_limit) {
-				TRACE_CONFIG("Starting CPU is way off limits!\n");
+				printf("Starting CPU is way off limits!\n");
 				return FALSE;
 			}
 			break;
@@ -997,7 +997,7 @@ main(int argc, char **argv)
 	}
 	
 	if (dir == NULL) {
-		TRACE_CONFIG("You did not pass a valid www_path!\n");
+		printf("You did not pass a valid www_path!\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1022,7 +1022,7 @@ main(int argc, char **argv)
 
 		fcache[nfiles].file = (char *)malloc(fcache[nfiles].size);
 		if (!fcache[nfiles].file) {
-			TRACE_CONFIG("Failed to allocate memory for file %s\n", 
+			printf("Failed to allocate memory for file %s\n", 
 				     fcache[nfiles].name);
 			perror("malloc");
 			continue;
@@ -1056,19 +1056,19 @@ main(int argc, char **argv)
 
 	/* initialize mtcp */
 	if (conf_file == NULL) {
-		TRACE_CONFIG("You forgot to pass the mTCP startup config file!\n");
+		printf("You forgot to pass the mTCP startup config file!\n");
 		exit(EXIT_FAILURE);
 	}
 
 	ret = mtcp_init(conf_file);
 	if (ret) {
-		TRACE_CONFIG("Failed to initialize mtcp\n");
+		printf("Failed to initialize mtcp\n");
 		exit(EXIT_FAILURE);
 	}
 
 	mtcp_getconf(&mcfg);
 	if (backlog > mcfg.max_concurrency) {
-		TRACE_CONFIG("backlog can not be set larger than CONFIG.max_concurrency\n");
+		printf("backlog can not be set larger than CONFIG.max_concurrency\n");
 		return FALSE;
 	}
 
@@ -1089,7 +1089,7 @@ main(int argc, char **argv)
 		if (pthread_create(&app_thread[i], 
 				   NULL, RunServerThread, (void *)&cores[i])) {
 			perror("pthread_create");
-			TRACE_CONFIG("Failed to create server thread.\n");
+			printf("Failed to create server thread.\n");
 				exit(EXIT_FAILURE);
 		}
 		if (process_cpu != -1)
