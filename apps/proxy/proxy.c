@@ -667,6 +667,8 @@ struct thread_context *
 InitializeServerThread(int core)
 {
 	struct thread_context *ctx;
+	int i;
+	int ret;
 
 	/* affinitize application thread to a CPU core */
 #if HT_SUPPORT
@@ -688,6 +690,13 @@ InitializeServerThread(int core)
 		free(ctx);
 		return NULL;
 	}
+
+	for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
+	{
+		ret = mtcp_init_rss(mtcx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
+		printf("init rss for server-%d: %d", i+1, ret);
+	}
+	
 
 	/* create epoll descriptor */
 	ctx->ep = mtcp_epoll_create(ctx->mctx, MAX_EVENTS);
