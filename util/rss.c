@@ -152,22 +152,26 @@ GetRSSHash(in_addr_t sip, in_addr_t dip, in_port_t sp, in_port_t dp)
 /*-------------------------------------------------------------------*/ 
 int
 GetRSSCPUCore(in_addr_t sip, in_addr_t dip, 
-			  in_port_t sp, in_port_t dp, int num_queues)
+			  in_port_t sp, in_port_t dp, int num_queues, uint8_5 endian_check)
 {
-	// not suitable for me 
-/* 	#define RSS_BIT_MASK 0x0000007F
-
-	static const uint32_t off[4] = {3, 1, -1, -3};
-	uint32_t masked = GetRSSHash(sip, dip, sp, dp) & RSS_BIT_MASK;
-
-	masked += off[masked & 0x3];
-	return (masked % num_queues); 
-*/
 	#define RSS_BIT_MASK_I40E		0x000001FF
-	static const uint32_t off[] = {3, 1, -1, -3};
-	masked = GetRSSHash(sip, dip, sp, dp) & RSS_BIT_MASK_I40E; 
-	masked += off[masked & 0x3];
-	return (masked % num_queues);
+	#define RSS_BIT_MASK 			0x0000007F
+	uint32_t masked;
+	if (endian_check)
+	{
+		static const uint32_t off[] = {3, 1, -1, -3};
+		masked = GetRSSHash(sip, dip, sp, dp) & RSS_BIT_MASK_I40E; 
+		masked += off[masked & 0x3];
+	
+	}
+	else
+	{
+		static const uint32_t off[4] = {3, 1, -1, -3};
+		masked = GetRSSHash(sip, dip, sp, dp) & RSS_BIT_MASK;
+	}
+	
+	
+	return (masked % num_queues); 
 }
 #if _TEST_RSS_
 /*-------------------------------------------------------------*/ 

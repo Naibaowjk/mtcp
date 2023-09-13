@@ -188,7 +188,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	while (1)
 	{
 		addr.sin_port = htons(1025 + (delta_port++));
-		int rss_core = GetRSSCPUCore(addr.sin_addr.s_addr, daddr, addr.sin_port, dport, 2);
+		int rss_core = GetRSSCPUCore(addr.sin_addr.s_addr, daddr, addr.sin_port, dport, 2, 0);
 		if (rss_core == core) 
 		{
 			printf("[CreateConnection]: rss_core:%d == core%d\n", rss_core, core);

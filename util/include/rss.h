@@ -9,5 +9,5 @@ uint32_t GetRSSHash(in_addr_t sip, in_addr_t dip,
 
 /* sip, dip, sp, dp: host-byte order */
 int GetRSSCPUCore(in_addr_t sip, in_addr_t dip, 
-				  in_port_t sp, in_port_t dp, int num_cpus);
+				  in_port_t sp, in_port_t dp, int num_cpus, uint8_t endian_check);
 #endif
