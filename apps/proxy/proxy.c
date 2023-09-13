@@ -274,7 +274,7 @@ CleanServerVariable(struct server_vars *sv)
 }
 
 void
-CleanClientVariable(struct wget_vars *wv)server_vars
+CleanClientVariable(struct wget_vars *wv)
 {
 	wv->recv_len = 0;
 	wv->total_read = 0;
