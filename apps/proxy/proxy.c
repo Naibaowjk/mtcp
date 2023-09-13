@@ -167,7 +167,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	struct sockaddr_in addr;
 	struct sockid_peer* sp = (struct sockid_peer*)calloc(1, sizeof(struct sockid_peer));
 	int sockid;
-	int ret;
+	
 
 
 	sockid = mtcp_socket(mctx, AF_INET, SOCK_STREAM, 0);
@@ -187,13 +187,16 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	addr.sin_port = htons(1025 + (delta_port++));
 
 	TRACE_CONFIG("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
-
+	
+	/* 
 	ret = mtcp_bind(mctx, sockid, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+	int ret;
 	if (ret < 0) {
     	// 处理错误
 		TRACE_CONFIG("Failed to bind to the client socket!\n");
 		return NULL;
-	}
+	} 
+	*/
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = daddr;
