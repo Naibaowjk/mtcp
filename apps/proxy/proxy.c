@@ -696,6 +696,7 @@ InitializeServerThread(int core)
 	{
 		ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[core].value, 1, config_dict->ip_dict[i].value, htons(8080));
 		TRACE_CONFIG("[core %d: init rss for server-%d: %d\n", core, i-1, ret);
+		if (ret < 0 ) printf("error in rss core:%d\n", core);
 	}
 	
 
