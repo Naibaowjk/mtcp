@@ -720,39 +720,39 @@ mtcp_connect(mctx_t mctx, int sockid,
 	}
 
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
-		TRACE_API("Socket id %d out of range.\n", sockid);
+		printf("Socket id %d out of range.\n", sockid);
 		errno = EBADF;
 		return -1;
 	}
 
 	if (mtcp->smap[sockid].socktype == MTCP_SOCK_UNUSED) {
-		TRACE_API("Invalid socket id: %d\n", sockid);
+		printf("Invalid socket id: %d\n", sockid);
 		errno = EBADF;
 		return -1;
 	}
 	
 	if (mtcp->smap[sockid].socktype != MTCP_SOCK_STREAM) {
-		TRACE_API("Not an end socket. id: %d\n", sockid);
+		printf("Not an end socket. id: %d\n", sockid);
 		errno = ENOTSOCK;
 		return -1;
 	}
 
 	if (!addr) {
-		TRACE_API("Socket %d: empty address!\n", sockid);
+		printf("Socket %d: empty address!\n", sockid);
 		errno = EFAULT;
 		return -1;
 	}
 
 	/* we only allow bind() for AF_INET address */
 	if (addr->sa_family != AF_INET || addrlen < sizeof(struct sockaddr_in)) {
-		TRACE_API("Socket %d: invalid argument!\n", sockid);
+		printf("Socket %d: invalid argument!\n", sockid);
 		errno = EAFNOSUPPORT;
 		return -1;
 	}
 
 	socket = &mtcp->smap[sockid];
 	if (socket->stream) {
-		TRACE_API("Socket %d: stream already exist!\n", sockid);
+		printf("Socket %d: stream already exist!\n", sockid);
 		if (socket->stream->state >= TCP_ST_ESTABLISHED) {
 			errno = EISCONN;
 		} else {
