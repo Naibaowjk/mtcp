@@ -184,7 +184,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	}
 	addr.sin_family = AF_INET;
 
-	addr.sin_addr.s_addr = config_dict->ip_dict[core].value;
+	addr.sin_addr.s_addr = config_dict->ip_dict[1].value;
 	while (1)
 	{
 		addr.sin_port = htons(1025 + (delta_port++));
@@ -203,12 +203,6 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 		return NULL;
 	} 
 	
-	/* init rss here */
-	mtcp_init_rss(ctx->mctx, config_dict->ip_dict[core].value, 1, daddr, dport);
-	if (ret < 0)
-	{
-		printf("init rss error!\n");
-	}
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = daddr;
