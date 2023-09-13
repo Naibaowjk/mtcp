@@ -673,6 +673,7 @@ dpdk_load_module(void)
 	, 0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa
 	}; 
 
+	printf("using rss_hash_key_asymmetric!\n");
 	port_conf.rx_adv_conf.rss_conf.rss_key = (uint8_t *)rss_hash_key_symmetric;
 	port_conf.rx_adv_conf.rss_conf.rss_key_len = sizeof(key);
 
