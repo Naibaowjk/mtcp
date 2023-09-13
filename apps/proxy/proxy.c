@@ -169,6 +169,8 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	int sockid;
 	int ret;
 
+	
+
 	sockid = mtcp_socket(mctx, AF_INET, SOCK_STREAM, 0);
 	if (sockid < 0) {
 		printf("Failed to create socket!\n");
@@ -184,6 +186,8 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 
 	addr.sin_addr.s_addr = config_dict->ip_dict[1].value;
 	addr.sin_port = htons(1025 + (delta_port++));
+
+	printf("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, addr.sin_port );
 
 	ret = mtcp_bind(mctx, sockid, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
