@@ -26,6 +26,7 @@
 #include "netlib.h"
 #include "debug.h"
 #include "read_conf.h"
+#include "rss.h"
 
 #define MAX_FLOW_NUM  (10000)
 
@@ -184,7 +185,13 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	addr.sin_family = AF_INET;
 
 	addr.sin_addr.s_addr = config_dict->ip_dict[core].value;
-	addr.sin_port = htons(1025 + (delta_port++));
+	while (1)
+	{
+		addr.sin_port = htons(1025 + (delta_port++));
+		int rss_core = GetRSSCPUCore(addr.sin_addr.s_addr, daddr, addr.sin_port, htons(80), 2);
+		if (rss_core == core) break;
+	}
+	
 
 	TRACE_CONFIG("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
 	
