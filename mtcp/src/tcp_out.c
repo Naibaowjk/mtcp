@@ -566,8 +566,9 @@ FlushTCPSendingBuffer(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_
 		
 		/* payload size limited by remaining window space */
 		len = MIN(len, remaining_window);
-		/* payload size limited by TCP MSS */
-		pkt_len = MIN(len, sndvar->mss - CalculateOptionLength(TCP_FLAG_ACK));
+		/* payload size limited by TCP MSS, consider vxlan function*/
+		pkt_len = MIN(len, sndvar->mss - CalculateOptionLength(TCP_FLAG_ACK) - 200);
+
 
 #if RATE_LIMIT_ENABLED
 		// update rate

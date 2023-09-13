@@ -30,6 +30,7 @@ enum {
 };
 
 int find_http_header(char *data, int len);
+int find_http_header_noterm(char *data, int len);
 int is_http_response(char *data, int len);
 int is_http_request(char *data, int len);
 

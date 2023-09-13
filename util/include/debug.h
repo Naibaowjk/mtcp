@@ -5,7 +5,11 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifdef DCONFIG
 #define TRACE_CONFIG(f, m...) fprintf(stdout, f, ##m)
+#else
+#define TRACE_CONFIG(f, m...) (void)0
+#endif
 
 #ifdef DBGERR
 

@@ -76,6 +76,7 @@ GTAGS
 
 apps/proxy/p4mesh.conf
 apps/proxy/*.conf
+apps/proxy/proxy
 apps/proxy/config/p4mesh.conf
 apps/proxy/config/arp.conf
 apps/proxy/config/route.conf

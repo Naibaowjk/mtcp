@@ -56,6 +56,27 @@ find_http_header(char *data, int len)
 	return hdr_len;
 }
 /*--------------------------------------------------------------------------*/
+int 
+find_http_header_noterm(char *data, int len)
+{
+	char *temp = data;
+	int hdr_len = 0;
+	char ch = data[len]; /* remember it */
+
+	/* null terminate the string first */
+	data[len] = 0;
+	while (!hdr_len && (temp = strchr(temp, '\n')) != NULL) {
+		temp++;
+		if (*temp == '\n') 
+			hdr_len = temp - data + 1;
+		else if (len > 0 && *temp == '\r' && *(temp + 1) == '\n') 
+			hdr_len = temp - data + 2;
+	}
+	data[len] = ch; /* put it back */
+
+	return hdr_len;
+}
+/*--------------------------------------------------------------------------*/
 int
 is_http_request(char * data, int len)
 {
@@ -309,7 +330,8 @@ int http_change_host_url(char* buf_new, int len_new,
 	int url_len_new = strlen(url_new);
 	int host_len_new = strlen(host_new);
      
-	if (len_new < len_old - host_len_old - url_len_old + host_len_new + url_len_old) {
+	if (len_new < len_old - host_len_old - url_len_old + host_len_new + url_len_new) {
+		printf("length not enough\n");
         return -1;  // 新缓冲区长度不足
 	}
 
