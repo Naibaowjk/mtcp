@@ -169,7 +169,6 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	int sockid;
 	int ret;
 
-	
 
 	sockid = mtcp_socket(mctx, AF_INET, SOCK_STREAM, 0);
 	if (sockid < 0) {
@@ -667,8 +666,7 @@ struct thread_context *
 InitializeServerThread(int core)
 {
 	struct thread_context *ctx;
-	int i;
-	int ret;
+
 
 	/* affinitize application thread to a CPU core */
 #if HT_SUPPORT
@@ -691,6 +689,9 @@ InitializeServerThread(int core)
 		return NULL;
 	}
 
+
+	// int i;
+	// int ret;
 	// for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
 	// {
 	// 	ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
