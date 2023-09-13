@@ -778,7 +778,7 @@ mtcp_connect(mctx_t mctx, int sockid,
 		if (rss_core != mctx->cpu) {
 			errno = EINVAL;
 			// return -1;
-			// printf("rss_core != mctx->cpu !!!!\n");
+			printf("rss_core(%d) != mctx->cpu(%d)\nsport:%u, dport:%u", rss_core, mctx->cpu, ntohs(dport), ntohs(socket->saddr.sin_port));
 			rss_core = mctx->cpu;
 		}
 	} else {
