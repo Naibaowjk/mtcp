@@ -188,19 +188,26 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 
 	TRACE_CONFIG("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
 	
-	/* 
+	 
 	ret = mtcp_bind(mctx, sockid, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
     	// 处理错误
 		TRACE_CONFIG("Failed to bind to the client socket!\n");
 		return NULL;
 	} 
-	*/
+	
+	/* init rss here */
+	mtcp_init_rss(ctx->mctx, config_dict->ip_dict[core].value, 1, daddr, dport);
+	if (ret < 0)
+	{
+		printf("init rss error!\n");
+	}
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = daddr;
 	addr.sin_port = dport;
 	
+
 
 	ret = mtcp_connect(mctx, sockid, 
 			(struct sockaddr *)&addr, sizeof(struct sockaddr_in));
@@ -691,16 +698,6 @@ InitializeServerThread(int core)
 		return NULL;
 	}
 
-
-	int i;
-	int ret;
-	for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
-	{
-		ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[core].value, 1, config_dict->ip_dict[i].value, htons(8080));
-		TRACE_CONFIG("[core %d: init rss for server-%d: %d\n", core, i-1, ret);
-		if (ret < 0 ) printf("error in rss core:%d\n", core);
-	}
-	
 
 	/* create epoll descriptor */
 	ctx->ep = mtcp_epoll_create(ctx->mctx, MAX_EVENTS);
