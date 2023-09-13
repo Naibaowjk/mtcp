@@ -691,11 +691,11 @@ InitializeServerThread(int core)
 		return NULL;
 	}
 
-	for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
-	{
-		ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
-		printf("init rss for server-%d: %d", i+1, ret);
-	}
+	// for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
+	// {
+	// 	ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
+	// 	printf("init rss for server-%d: %d\n", i-1, ret);
+	// }
 	
 
 	/* create epoll descriptor */
