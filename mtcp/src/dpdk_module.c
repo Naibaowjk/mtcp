@@ -141,9 +141,8 @@ static struct rte_eth_conf port_conf = {
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = 	NULL,
-			//.rss_hf = 	RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP |
-			// 		RTE_ETH_RSS_IP | RTE_ETH_RSS_L2_PAYLOAD
-			.rss_hf = 0		
+			.rss_hf = 	RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP |
+			 		RTE_ETH_RSS_IP | RTE_ETH_RSS_L2_PAYLOAD
 		},
 	},
 	.txmode = {
@@ -707,7 +706,7 @@ dpdk_load_module(void)
 			rte_eth_dev_info_get(portid, &dev_info[portid]);
 #if RTE_VERSION >= RTE_VERSION_NUM(18, 5, 0, 0)
 			/* re-adjust rss_hf */
-			port_conf.rx_adv_conf.rss_conf.rss_hf &= dev_info[portid].flow_type_rss_offloads;
+			// port_conf.rx_adv_conf.rss_conf.rss_hf &= dev_info[portid].flow_type_rss_offloads;
 #endif
 			/* init port */
 			printf("Initializing port %u... ", (unsigned) portid);
