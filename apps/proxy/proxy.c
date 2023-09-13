@@ -187,7 +187,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	addr.sin_addr.s_addr = config_dict->ip_dict[1].value;
 	addr.sin_port = htons(1025 + (delta_port++));
 
-	printf("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, addr.sin_port );
+	printf("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
 
 	ret = mtcp_bind(mctx, sockid, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
@@ -200,6 +200,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	addr.sin_addr.s_addr = daddr;
 	addr.sin_port = dport;
 	
+
 	ret = mtcp_connect(mctx, sockid, 
 			(struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
