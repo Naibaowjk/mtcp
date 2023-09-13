@@ -675,8 +675,8 @@ dpdk_load_module(void)
 	, 0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa
 	}; 
 
-	printf("using rss_hash_key_asymmetric!\n");
-	port_conf.rx_adv_conf.rss_conf.rss_key = (uint8_t *)rss_hash_key_asymmetric;
+	printf("using default key with len 52!\n");
+	port_conf.rx_adv_conf.rss_conf.rss_key = (uint8_t *)key;
 	port_conf.rx_adv_conf.rss_conf.rss_key_len = sizeof(key);
 
 	if (!CONFIG.multi_process || (CONFIG.multi_process && CONFIG.multi_process_is_master)) {
@@ -736,7 +736,8 @@ dpdk_load_module(void)
 
 			printf("try check driver type %s\n", dev_info[portid].driver_name);fflush(stdout);
 			if (!strncmp(dev_info[portid].driver_name, "mlx5_pci", 8)){
-				port_conf.rx_adv_conf.rss_conf.rss_key_len = 40;
+				printf("changing key len to 52\n");
+				port_conf.rx_adv_conf.rss_conf.rss_key_len = 52;
 			}
 				
 			printf("try rte_eth_dev_configure\n");fflush(stdout);
