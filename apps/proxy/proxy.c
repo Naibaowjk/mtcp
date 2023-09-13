@@ -185,7 +185,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	addr.sin_family = AF_INET;
 
 	addr.sin_addr.s_addr = config_dict->ip_dict[1].value;
-	while (1)
+/* 	while (1)
 	{
 		addr.sin_port = htons(1025 + (delta_port++));
 		int rss_core = GetRSSCPUCore(addr.sin_addr.s_addr, daddr, addr.sin_port, dport, 2, 0);
@@ -194,7 +194,10 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 			printf("[CreateConnection]: rss_core:%d == core%d\n", rss_core, core);
 			break;
 		}
-	}
+	} */
+	printf("[CreateConnection] Manual Find port number :(\n");
+	addr.sin_port = htons(1025 + (delta_port++));
+	printf("[CreateConnection]: core=%d, sport=%u\n", core, ntohs(addr.sin_port));
 	
 
 	TRACE_CONFIG("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
