@@ -160,7 +160,7 @@ static int finished;
 /*----------------------------------------------------------------------------*/
 
 static inline struct sockid_peer*
-CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int sv_sockid)
+CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int sv_sockid, int core)
 {
 	mctx_t mctx = ctx->mctx;
 	struct mtcp_epoll_event ev;
@@ -183,7 +183,7 @@ CreateConnection(struct thread_context* ctx, uint32_t daddr, uint16_t dport, int
 	}
 	addr.sin_family = AF_INET;
 
-	addr.sin_addr.s_addr = config_dict->ip_dict[1].value;
+	addr.sin_addr.s_addr = config_dict->ip_dict[core].value;
 	addr.sin_port = htons(1025 + (delta_port++));
 
 	TRACE_CONFIG("[CreateConnection] sv_sockid:%d, dport:%u\n",sv_sockid, ntohs(addr.sin_port));
@@ -397,7 +397,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 
 /*----------------------------------------------------------------------------*/
 static int
-HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
+HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp, int core)
 {
 	struct sockid_peer* sp_server;
 	struct sockid_peer* sp_client;
@@ -568,7 +568,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
 				/* create connection */
 				if (config_dict->func_dict->fault_injection == 0 && sp_server->client_sockid == -1)
 				{
-					sp_client = CreateConnection(ctx, config_dict->ip_dict[i].value, htons(8080), sp_server->server_sockid);
+					sp_client = CreateConnection(ctx, config_dict->ip_dict[i].value, htons(8080), sp_server->server_sockid, core);
 					sp_server->client_sockid = sp_client->client_sockid;
 				}
 				wv = &ctx->wvars[sp_server->client_sockid];
@@ -690,13 +690,13 @@ InitializeServerThread(int core)
 	}
 
 
-	// int i;
-	// int ret;
-	// for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
-	// {
-	// 	ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[1].value, 1, config_dict->ip_dict[i].value, htons(8080));
-	// 	TRACE_CONFIG("init rss for server-%d: %d\n", i-1, ret);
-	// }
+	int i;
+	int ret;
+	for ( i = config_dict->len - config_dict->url_len; i < config_dict->len; i++)
+	{
+		ret = mtcp_init_rss(ctx->mctx, config_dict->ip_dict[core].value, 1, config_dict->ip_dict[i].value, htons(8080));
+		TRACE_CONFIG("[core %d: init rss for server-%d: %d\n", core, i-1, ret);
+	}
 	
 
 	/* create epoll descriptor */
@@ -854,7 +854,7 @@ RunServerThread(void *arg)
 			else if (events[i].events & MTCP_EPOLLIN) 
 			{
 				struct sockid_peer* sp= (struct sockid_peer*)events[i].data.ptr;
-				ret = HandleReadEvent2(ctx, sp);
+				ret = HandleReadEvent2(ctx, sp, core);
 
 				if (ret == 0 && sp->type == 1) {
 					/* connection closed by remote host */
