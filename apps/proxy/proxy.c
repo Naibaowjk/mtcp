@@ -303,7 +303,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	int sockid;
 	if (sp->type == 1)
 	{
-		printf("[CPU:%d SendUntilAvailble] Handle Send for server: sp->server_sockid = %d\n",ctx->mtcx->cpu, sp->server_sockid);
+		printf("[SendUntilAvailble] Handle Send for server: sp->server_sockid = %d\n", sp->server_sockid);
 		sockid = sp->server_sockid;
 		sv = &ctx->svars[sp->server_sockid];
 		sent = 0;
@@ -345,7 +345,7 @@ SendUntilAvailable(struct thread_context *ctx, struct sockid_peer* sp)
 	}
 	else
 	{
-		printf("[CPU:%d SendUntilAvailble] Handle Send for client: sp->client_sockid = %d\n",ctx->mtcx->cpu, sp->client_sockid);
+		printf("[SendUntilAvailble] Handle Send for client: sp->client_sockid = %d\n", sp->client_sockid);
 		sockid = sp->client_sockid;
 		wv = &ctx->wvars[sockid];
 		sent = 0;
@@ -418,7 +418,7 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp)
     int i;
 	int copy_len;
 
-	printf("[CPU:%d HandleReadEvent] sp->type:%d, sp->client_sockid:%d, sp->server_sockid:%d\n", ctx->mctx->cpu, sp->type, sp->client_sockid, sp->server_sockid);
+	printf("[HandleReadEvent] sp->type:%d, sp->client_sockid:%d, sp->server_sockid:%d\n", sp->type, sp->client_sockid, sp->server_sockid);
 	
 	/* init server_sp, client_sp */
 	if (sp->type == 0) // client events
