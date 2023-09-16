@@ -24,9 +24,31 @@
     }
 
 #else
-#define MEASURE_START() 
-#define MEASURE_END(label) (void)0
+#define EPWAIT_START() 
+#define EPWAIT_END() 
 #endif
+
+#ifdef EPWAIT
+#define MEASURE_START() \
+    uint64_t _start_time_ns; \
+    { \
+        struct timespec ts; \
+        clock_gettime(CLOCK_MONOTONIC, &ts); \
+        _start_time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; \
+    }
+#define MEASURE_END() \
+    { \
+        struct timespec ts; \
+        clock_gettime(CLOCK_MONOTONIC, &ts); \
+        uint64_t _end_time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; \
+        printf("epoll wait - %lu nsec\n",  _end_time_ns - _start_time_ns); \
+    }
+
+#else
+#define EWAIT_START() 
+#define EWAIT_END() 
+#endif
+
 
 #ifdef DBGTEMP
 
