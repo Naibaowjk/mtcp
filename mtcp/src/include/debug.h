@@ -25,7 +25,7 @@
 
 #else
 #define MEASURE_START() 
-#define MEASURE_END(label) (void*)0
+#define MEASURE_END(label) (void)0
 #endif
 
 #ifdef EPWAIT
