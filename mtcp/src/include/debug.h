@@ -24,19 +24,19 @@
     }
 
 #else
-#define EPWAIT_START() 
-#define EPWAIT_END() 
+#define MEASURE_START() 
+#define MEASURE_END(label) (void*)0
 #endif
 
 #ifdef EPWAIT
-#define MEASURE_START() \
+#define EPWAIT_START() \
     uint64_t _start_time_ns; \
     { \
         struct timespec ts; \
         clock_gettime(CLOCK_MONOTONIC, &ts); \
         _start_time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; \
     }
-#define MEASURE_END() \
+#define EPWAIT_END() \
     { \
         struct timespec ts; \
         clock_gettime(CLOCK_MONOTONIC, &ts); \
