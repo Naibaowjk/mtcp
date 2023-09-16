@@ -562,7 +562,7 @@ wait:
 		goto wait;
 
 	pthread_mutex_unlock(&ep->epoll_lock);
-	EPWAIT_END("mtcp_epoll_wait");
+	EPWAIT_END();
 	return cnt;
 }
 /*----------------------------------------------------------------------------*/
