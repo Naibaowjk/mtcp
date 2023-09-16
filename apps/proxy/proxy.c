@@ -528,10 +528,13 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp, int core)
 						"Content-Length: %d\r\n"
 						"Connection: %s\r\n\r\n", 
 						scode, StatusCodeToString(scode), t_str, 0, keepalive_str);
+				sp->send_len = strlen(sv->send_buf);
+
 				/* Handle Server Events */
 				ev_server.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
 				ev_server.data.ptr = (void*)sp_server;
 				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp_server->server_sockid, &ev_server);
+				// printf("fault-injection: ready to send:\n%s\n", sv->send_buf);
 				/* this is not sure to set */
 				sv->rspheader_sent = TRUE;
 			}
