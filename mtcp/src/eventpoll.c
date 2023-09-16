@@ -363,6 +363,7 @@ int
 mtcp_epoll_wait(mctx_t mctx, int epid, 
 		struct mtcp_epoll_event *events, int maxevents, int timeout)
 {
+	MEASURE_START();
 	mtcp_manager_t mtcp;
 	struct mtcp_epoll *ep;
 	struct event_queue *eq;
@@ -561,7 +562,7 @@ wait:
 		goto wait;
 
 	pthread_mutex_unlock(&ep->epoll_lock);
-
+	MEASURE_END("mtcp_epoll_wait");
 	return cnt;
 }
 /*----------------------------------------------------------------------------*/

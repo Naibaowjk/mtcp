@@ -1281,6 +1281,7 @@ int
 ProcessTCPPacket(mtcp_manager_t mtcp, 
 		 uint32_t cur_ts, const int ifidx, const struct iphdr *iph, int ip_len)
 {
+	MEASURE_START();
 	struct tcphdr* tcph = (struct tcphdr *) ((u_char *)iph + (iph->ihl << 2));
 	uint8_t *payload    = (uint8_t *)tcph + (tcph->doff << 2);
 	int payloadlen = ip_len - (payload - (u_char *)iph);
@@ -1489,6 +1490,6 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		break;
 
 	}
-
+	MEASURE_END("ProcessTCPPacket");
 	return TRUE;
 }

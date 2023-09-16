@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 #define _GNU_SOURCE
 #include <string.h>
 #include <errno.h>
 #include "http_parsing.h"
 #include "tdate_parse.h"
+#include "debug.h"
 
 #define SPACE_OR_TAB(x)  ((x) == ' '  || (x) == '\t')
 #define CR_OR_NEWLINE(x) ((x) == '\r' || (x) == '\n')
@@ -59,6 +61,7 @@ find_http_header(char *data, int len)
 int 
 find_http_header_noterm(char *data, int len)
 {
+	MEASURE_START();
 	char *temp = data;
 	int hdr_len = 0;
 	char ch = data[len]; /* remember it */
@@ -73,7 +76,7 @@ find_http_header_noterm(char *data, int len)
 			hdr_len = temp - data + 2;
 	}
 	data[len] = ch; /* put it back */
-
+	MEASURE_END("http_parser");
 	return hdr_len;
 }
 /*--------------------------------------------------------------------------*/
@@ -327,6 +330,7 @@ int http_change_host_url(char* buf_new, int len_new,
 								char* host_new, int host_posi, int host_len_old,
 								char *url_new, int url_posi, int url_len_old)
 {
+	MEASURE_START();
 	int url_len_new = strlen(url_new);
 	int host_len_new = strlen(host_new);
      
@@ -360,6 +364,6 @@ int http_change_host_url(char* buf_new, int len_new,
         buf_new[index_new++] = buf_old[index_old++];
     }
 	buf_new[index_new] = 0;
-
+	MEASURE_END("ROUTING");
     return index_new;  // 返回新缓冲区中的数据长度
 }

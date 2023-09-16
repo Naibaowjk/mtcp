@@ -226,6 +226,7 @@ int
 SendTCPPacket(struct mtcp_manager *mtcp, tcp_stream *cur_stream, 
 		uint32_t cur_ts, uint8_t flags, uint8_t *payload, uint16_t payloadlen)
 {
+	MEASURE_START();
 	struct tcphdr *tcph;
 	uint16_t optlen;
 	uint8_t wscale = 0;
@@ -357,7 +358,7 @@ SendTCPPacket(struct mtcp_manager *mtcp, tcp_stream *cur_stream,
 				cur_ts, cur_stream->sndvar->rto, cur_stream->sndvar->ts_rto);
 		AddtoRTOList(mtcp, cur_stream);
 	}
-		
+	MEASURE_END("SendTCPPacket");
 	return payloadlen;
 }
 /*----------------------------------------------------------------------------*/

@@ -54,6 +54,7 @@ uint8_t *
 IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol, 
 		uint16_t ip_id, uint32_t saddr, uint32_t daddr, uint16_t payloadlen, int is_inner)
 {
+	MEASURE_START();
 	struct iphdr *iph;
 	int nif;
 	unsigned char* dst_haddr;
@@ -129,6 +130,7 @@ IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol,
 	UNUSED(rc);
 	iph->check = ip_fast_csum(iph, iph->ihl);
 #endif
+	MEASURE_END("IPOutputStandalone");
 
 	return (uint8_t *)(iph + 1);
 }
@@ -137,6 +139,7 @@ IPOutputStandalone(struct mtcp_manager *mtcp, uint8_t protocol,
 uint8_t *
 IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen, int is_inner)
 {
+	MEASURE_START();
 	struct iphdr *iph;
 	int nif;
 	unsigned char* dst_haddr;
@@ -205,5 +208,6 @@ IPOutput(struct mtcp_manager *mtcp, tcp_stream *stream, uint16_t tcplen, int is_
 	UNUSED(rc);
 	iph->check = ip_fast_csum(iph, iph->ihl);
 #endif
+	MEASURE_END("IPOutput");
 	return (uint8_t *)(iph + 1);
 }

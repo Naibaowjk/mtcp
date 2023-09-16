@@ -18,6 +18,7 @@ inline int
 ProcessIPv4Packet(mtcp_manager_t mtcp, uint32_t cur_ts, 
 				  const int ifidx, unsigned char* pkt_data, int len)
 {
+	MEASURE_START();
 	/* check and process IPv4 packets */
 	struct iphdr* iph = (struct iphdr *)(pkt_data + sizeof(struct ethhdr));
 	int ip_len = ntohs(iph->tot_len);
@@ -54,15 +55,19 @@ ProcessIPv4Packet(mtcp_manager_t mtcp, uint32_t cur_ts,
 	switch (iph->protocol) {
 		case IPPROTO_TCP:
 			TRACE_CONFIG("It's a TCP Packet. \n");
+			MEASURE_END("ProcessIPv4Packet");
 			return ProcessTCPPacket(mtcp, cur_ts, ifidx, iph, ip_len);
 		case IPPROTO_ICMP:
 			TRACE_CONFIG("It's a ICMP Packet. \n");
+			MEASURE_END("ProcessIPv4Packet");
 			return ProcessICMPPacket(mtcp, iph, ip_len);
 		case IPPROTO_UDP:
 			TRACE_CONFIG("It's a UDP Packet. \n");
+			MEASURE_END("ProcessIPv4Packet");
 			return ProcessUDPPacket(mtcp, cur_ts, ifidx, iph, ip_len);	
 		default:
 			TRACE_CONFIG("Drop unknown Packet. \n");
+			MEASURE_END("ProcessIPv4Packet");
 			/* currently drop other protocols */
 			return FALSE;
 	}

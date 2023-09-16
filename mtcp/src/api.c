@@ -1171,6 +1171,7 @@ CopyToUser(mtcp_manager_t mtcp, tcp_stream *cur_stream, char *buf, int len)
 ssize_t
 mtcp_recv(mctx_t mctx, int sockid, char *buf, size_t len, int flags)
 {
+	MEASURE_START();
 	mtcp_manager_t mtcp;
 	socket_map_t socket;
 	tcp_stream *cur_stream;
@@ -1295,7 +1296,8 @@ mtcp_recv(mctx_t mctx, int sockid, char *buf, size_t len, int flags)
 	}
 	
 	TRACE_API("Stream %d: mtcp_recv() returning %d\n", cur_stream->id, ret);
-        return ret;
+	MEASURE_END("mtcp_recv");
+    return ret;
 }
 /*----------------------------------------------------------------------------*/
 ssize_t
@@ -1478,6 +1480,7 @@ CopyFromUser(mtcp_manager_t mtcp, tcp_stream *cur_stream, const char *buf, int l
 ssize_t
 mtcp_write(mctx_t mctx, int sockid, const char *buf, size_t len)
 {
+	MEASURE_START();
 	mtcp_manager_t mtcp;
 	socket_map_t socket;
 	tcp_stream *cur_stream;
@@ -1583,6 +1586,7 @@ mtcp_write(mctx_t mctx, int sockid, const char *buf, size_t len)
 	}
 
 	TRACE_API("Stream %d: mtcp_write() returning %d\n", cur_stream->id, ret);
+	MEASURE_END("mtcp_write");
 	return ret;
 }
 /*----------------------------------------------------------------------------*/

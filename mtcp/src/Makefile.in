@@ -40,7 +40,7 @@ endif
 # DBGERR      	= Enable macro to print error statements
 # DBGCERR     	= Enable macro to print error statements
 # DCONFIG       = Enable macro to print config statements
-#
+# DDFUNCT		= Enable macro to print latency statements
 
 GCC_OPT += -Wall -fPIC -fgnu89-inline -Werror -Wno-error=unused-variable -Wno-error=unused-but-set-variable
 #DBG_OPT = -DDBGMSG -DDBGFUNC -DSTREAM -DSTATE -DTSTAT -DAPP -DEPOLL
@@ -50,7 +50,7 @@ GCC_OPT += -Wall -fPIC -fgnu89-inline -Werror -Wno-error=unused-variable -Wno-er
 #GCC_OPT += -g -DNETSTAT -DINFO -DDBGERR -DDBGCERR
 #GCC_OPT += -DNDEBUG -g -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR 
 #GCC_OPT += -DNDEBUG -g -DNETSTAT -DINFO -DDBGERR -DDBGCERR
-GCC_OPT += -O3  -g  -DDBGERR -DDBGCERR
+GCC_OPT += -O3  -g  -DDBGERR -DDBGCERR -DDFUNCT
 GCC_OPT += $(DBG_OPT)
 GCC_OPT += -D__USRLIB__
 

@@ -4,6 +4,7 @@
 int
 ProcessUDPPacket(struct mtcp_manager *mtcp, uint32_t cur_ts, const int ifidx, const struct iphdr* iph, int ip_len)
 {
+   MEASURE_START();
    struct udphdr* udph = (struct udphdr*) IP_NEXT_PTR(iph);
    int payload_len = ntohs(udph->len) - 8;
 
@@ -12,6 +13,7 @@ ProcessUDPPacket(struct mtcp_manager *mtcp, uint32_t cur_ts, const int ifidx, co
    {
       /* it's is vxlan header */
       TRACE_CONFIG("successfully check vxlan dst port: %d\n", config_dict->vxlan_dict->PORT);
+      MEASURE_END("ProcessUDPPacket");
       return ProcessVxlanPacket(mtcp, cur_ts, ifidx, udph, payload_len);
    }
    else // drop other UDP pakcet

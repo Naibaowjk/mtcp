@@ -3,7 +3,8 @@
 uint8_t *
 UDPOutput(struct mtcp_manager *mtcp, uint16_t vxlan_len, int ifidx)
 {
-    int udp_len;
+ 	MEASURE_START();
+	int udp_len;
 	struct udphdr* udph;
 	uint32_t saddr, daddr;
 	uint16_t src_port, dst_port;
@@ -32,6 +33,6 @@ UDPOutput(struct mtcp_manager *mtcp, uint16_t vxlan_len, int ifidx)
 	udph->dest = htons(dst_port);
 	udph->len = htons(udp_len);
 	udph->check = htons(0);
-
+	MEASURE_END("UDPOutput");
 	return (uint8_t*)(udph + 1);
 }

@@ -1,10 +1,12 @@
 #include "vxlan_out.h"
 
 
+
 uint8_t *
 VxlanOutput(struct mtcp_manager *mtcp, uint16_t inner_len, int ifidx)
 {
-    struct vxlanhdr* vxlan_hdr;
+ 	MEASURE_START();   
+	struct vxlanhdr* vxlan_hdr;
 	uint16_t vxlan_len;
 	VxlanEntry* vxlanEntries = config_dict->vxlan_dict;
 
@@ -14,6 +16,6 @@ VxlanOutput(struct mtcp_manager *mtcp, uint16_t inner_len, int ifidx)
 	vxlan_hdr->vni = htons((uint16_t)vxlanEntries->VNI) << 8;
 	vxlan_hdr->reserved1 = 0; 
 	vxlan_hdr->reserved2 = 0; 
-
+	MEASURE_END("VxlanOutput");
 	return (uint8_t *)(vxlan_hdr + 1);
 }
