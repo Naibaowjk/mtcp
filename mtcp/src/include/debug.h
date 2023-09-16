@@ -45,8 +45,8 @@
     }
 
 #else
-#define EWAIT_START() 
-#define EWAIT_END() 
+#define EPWAIT_START() 
+#define EPWAIT_END() 
 #endif
 
 
