@@ -13,11 +13,11 @@ ProcessVxlanPacket(struct mtcp_manager *mtcp, uint32_t cur_ts,
     if (vni_n == config_dict->vxlan_dict->VNI)
     {
         TRACE_CONFIG("successfully check vxlan VNI:%d\n", config_dict->vxlan_dict->VNI);
+        MEASURE_END("ProcessVxlanPacket");
         return ProcessPacket(mtcp, ifidx, cur_ts, pktdata, len - 8);
     }
 
     /* error! should not be there */
-    MEASURE_END("ProcessVxlanPacket");
     return FALSE;
 
 }
