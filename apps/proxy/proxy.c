@@ -67,6 +67,7 @@
 #endif
 
 int delta_port = 0;
+static int lb_index = 0; // currently using RR to support load_balance.
 
 // static int concurrency = 16;
 /*----------------------------------------------------------------------------*/
@@ -637,7 +638,96 @@ HandleReadEvent2(struct thread_context *ctx, struct sockid_peer* sp, int core)
 				return rd;
 			}	
 		}
+		else if (config_dict->func_dict->load_balance == 1)
+		{
+			if (sp_server->client_sockid == -1) copy_len = HTTP_LEN - 10;
+			else 
+			{
+				wv = &ctx->wvars[sp_server->client_sockid];
+				copy_len = HTTP_LEN - wv->send_len - 10; /* here -10 is using for changing url, maybe longer */
+			}
+			assert(copy_len >= 0);
+			/* we should copy here because we need to change URL and HOST */
+			rd = mtcp_read(ctx->mctx, sp_server->server_sockid, buf, copy_len);
+			TRACE_CONFIG("[Routing] mtcp_read size copy_len(want): %d, rd(real): %d\n", copy_len, rd);
+			/* check if recv 0 */
+			if (rd <= 0)
+			{
+				return rd;
+			}
+			/* check if found header there, here must read all header */
+			sv->request_len = find_http_header_noterm(buf, rd);
+			
+			/* find it*/
+			if (sv->request_len > 0)
+			{
+				/* setting keep_alive */
+				sv->keep_alive = TRUE;
+				if (http_header_str_val(sv->recv_buf, "Connection: ", strlen("Connection: "), keepalive_str, 128)) 
+				{	
+						if (strstr(keepalive_str, "Keep-Alive")) sv->keep_alive = TRUE;
+						else if (strstr(keepalive_str, "Close")) sv->keep_alive = FALSE;
+						else sv->keep_alive = TRUE;
+				}
+				
+				url_posi = http_get_url(buf, rd, url, URL_LEN);
+				host_posi = http_get_host(buf, rd, host, HOST_LEN);
 
+				lb_index = (lb_index + 1) % config_dict->url_len;
+				lb_index += config_dict->len - config_dict->url_len;
+
+				/* create connection */
+				if (sp_server->client_sockid == -1)
+				{
+					sp_client = CreateConnection(ctx, config_dict->ip_dict[lb_index].value, htons(8080), sp_server->server_sockid, core);
+					sp_server->client_sockid = sp_client->client_sockid;
+				}
+				wv = &ctx->wvars[sp_server->client_sockid];
+				wv->keep_alive = sv->keep_alive;
+				sprintf(host_new, "%u.%u.%u.%u", 
+					(config_dict->ip_dict[lb_index].value & 0x000000FF),
+					(config_dict->ip_dict[lb_index].value & 0x0000FF00) >> 8,
+					(config_dict->ip_dict[lb_index].value & 0x00FF0000) >> 16,
+            		(config_dict->ip_dict[lb_index].value & 0xFF000000) >> 24);
+				TRACE_CONFIG("[Load Balance] before send: send_len: %d\nsend_buf: \n%s\n", wv->send_len, wv->send_buf);
+				change_len = http_change_host_url(wv->send_buf + wv->send_len, copy_len+10, buf, rd, 
+									host_new, host_posi, strlen(host), 
+									url_new, url_posi, strlen(url));
+				TRACE_CONFIG("Write in wv->sendbuf: \n%s\n", wv->send_buf + wv->send_len);
+				wv->send_len += change_len;
+				TRACE_CONFIG("changed_len:%d, new wv->send_len:%d, wv->send_buf:\n%s\n", change_len, wv->send_len, wv->send_buf);
+				/* server socket */
+				ev_server.events = MTCP_EPOLLIN;
+				ev_server.data.ptr = (void*)sp_server;
+				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp_server->server_sockid, &ev_server);
+
+				/* client socket */
+				ev_client.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+				ev_client.data.ptr = (void*)sp_client;
+				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp_server->client_sockid, &ev_client);
+				return rd;
+			}
+			// not find
+			else
+			{
+				wv = &ctx->wvars[sp_server->client_sockid];
+				/* already copyed, memcpy to send_buf */
+				memcpy(wv->send_buf + wv->send_len, (char*)buf, rd);
+				TRACE_CONFIG("[HandleReadEvents - Routing] ready to send:\n%s\n", wv->send_buf + wv->send_len);
+				wv->send_len += rd;
+
+				/* server socket */
+				ev_server.events = MTCP_EPOLLIN;
+				ev_server.data.ptr = (void*)sp_server;
+				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp_server->server_sockid, &ev_server);
+
+				/* client socket */
+				ev_client.events = MTCP_EPOLLIN | MTCP_EPOLLOUT;
+				ev_client.data.ptr = (void*)sp_client;
+				mtcp_epoll_ctl(ctx->mctx, ctx->ep, MTCP_EPOLL_CTL_MOD, sp_server->client_sockid, &ev_client);
+				return rd;
+			}	
+		}
 	}
 	return -1;
 }

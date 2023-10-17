@@ -37,6 +37,7 @@ typedef struct {
 typedef struct {
     int fault_injection;
     int routing;
+    int load_balance;
     uint32_t server_ip;
     uint8_t server_mac[6];
 } FuncEntry;

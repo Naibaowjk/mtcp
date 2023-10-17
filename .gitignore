@@ -85,3 +85,6 @@ apps/proxy/config/route.conf
 apps/example/get-lcore-info.sh
 apps/proxy/log_0
 apps/proxy/log_1
+
+apps/proxy/core
+apps/rss_get/build/*
